@@ -187,6 +187,7 @@
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
             <button class="export-btn" onclick="exportKML()">Export KML</button>
+            <button class="export-btn" onclick="exportCSV()">Export CSV</button>
             <button onclick="toggleDebug()">Toggle Debug</button>
         </div>
 
@@ -550,6 +551,59 @@
             URL.revokeObjectURL(url);
             
             showMessage(`Exported ${filteredRepeaters.length} repeaters to KML`, 'success');
+        }
+
+        function exportCSV() {
+            if (filteredRepeaters.length === 0) {
+                showMessage('No repeaters to export', 'error');
+                return;
+            }
+
+            const csv = generateCSV(filteredRepeaters);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'utah_repeaters_filtered.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage(`Exported ${filteredRepeaters.length} repeaters to CSV`, 'success');
+        }
+
+        function generateCSV(repeaters) {
+            if (repeaters.length === 0) return '';
+            
+            // Get all unique field names from all repeaters
+            const allFields = new Set();
+            repeaters.forEach(repeater => {
+                Object.keys(repeater).forEach(key => {
+                    // Skip internal fields we added for processing
+                    if (key !== 'lat' && key !== 'lon') {
+                        allFields.add(key);
+                    }
+                });
+            });
+            
+            const fieldNames = Array.from(allFields).sort();
+            
+            // Create CSV header
+            let csv = fieldNames.map(field => `"${field}"`).join(',') + '\n';
+            
+            // Add data rows
+            repeaters.forEach(repeater => {
+                const row = fieldNames.map(field => {
+                    const value = repeater[field] || '';
+                    // Escape quotes and wrap in quotes
+                    return `"${value.toString().replace(/"/g, '""')}"`;
+                });
+                csv += row.join(',') + '\n';
+            });
+            
+            return csv;
         }
 
         function generateKML(repeaters) {
