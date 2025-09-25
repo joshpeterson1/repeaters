@@ -199,7 +199,7 @@
                     <tr>
                         <th onclick="sortTable('frequency')">Frequency</th>
                         <th onclick="sortTable('call')">Call</th>
-                        <th onclick="sortTable('location')">Location</th>
+                        <th onclick="sortTable('general_location')">Location</th>
                         <th onclick="sortTable('site_name')">Site</th>
                         <th onclick="sortTable('sponsor')">Sponsor</th>
                         <th onclick="sortTable('ctcss')">CTCSS</th>
@@ -499,7 +499,7 @@
                 const callCell = row.insertCell();
                 callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
                 
-                row.insertCell().textContent = repeater.location || '';
+                row.insertCell().textContent = repeater.general_location || '';
                 row.insertCell().textContent = repeater.site_name || '';
                 row.insertCell().textContent = repeater.sponsor || '';
                 row.insertCell().textContent = repeater.ctcss || '';
@@ -577,7 +577,7 @@
 <b>Frequency:</b> ${repeater.frequency} MHz<br/>
 <b>Offset:</b> ${repeater.offset}<br/>
 <b>CTCSS:</b> ${repeater.ctcss}<br/>
-<b>Location:</b> ${repeater.location}<br/>
+<b>Location:</b> ${repeater.general_location}<br/>
 <b>Site:</b> ${repeater.site_name}<br/>
 <b>Sponsor:</b> ${repeater.sponsor}<br/>
 <b>Elevation:</b> ${repeater.elevation}<br/>
