@@ -66,6 +66,17 @@
             font-weight: bold;
             color: #666;
         }
+        .debug {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -176,9 +187,11 @@
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
             <button class="export-btn" onclick="exportKML()">Export KML</button>
+            <button onclick="toggleDebug()">Toggle Debug</button>
         </div>
 
         <div class="stats" id="stats">No data loaded</div>
+        <div class="debug" id="debug" style="display: none;"></div>
         
         <div class="table-container">
             <table id="repeaterTable">
@@ -207,17 +220,34 @@
         let filteredRepeaters = [];
         let currentSort = { column: null, direction: 'asc' };
         let userLocation = null;
+        let debugInfo = [];
+
+        function addDebug(message) {
+            debugInfo.push(message);
+            console.log(message);
+            const debugEl = document.getElementById('debug');
+            debugEl.innerHTML = debugInfo.join('<br>');
+        }
+
+        function toggleDebug() {
+            const debugEl = document.getElementById('debug');
+            debugEl.style.display = debugEl.style.display === 'none' ? 'block' : 'none';
+        }
 
         // Load CSV file
         document.getElementById('csvFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
+                debugInfo = []; // Clear debug info
+                addDebug(`Loading file: ${file.name} (${file.size} bytes)`);
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
                         parseCSV(e.target.result);
                         showMessage('CSV file loaded successfully!', 'success');
                     } catch (error) {
+                        addDebug(`Error: ${error.message}`);
                         showMessage('Error loading CSV file: ' + error.message, 'error');
                     }
                 };
@@ -226,31 +256,57 @@
         });
 
         function parseCSV(csvText) {
-            const lines = csvText.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            addDebug(`CSV text length: ${csvText.length}`);
+            
+            const lines = csvText.split('\n').filter(line => line.trim());
+            addDebug(`Found ${lines.length} lines`);
+            
+            if (lines.length < 2) {
+                throw new Error('CSV file appears to be empty or has no data rows');
+            }
+
+            // More robust CSV parsing
+            const headers = parseCSVLine(lines[0]);
+            addDebug(`Headers (${headers.length}): ${headers.join(', ')}`);
             
             allRepeaters = [];
+            let successCount = 0;
+            let errorCount = 0;
+            
             for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim()) {
-                    const values = parseCSVLine(lines[i]);
-                    if (values.length >= headers.length) {
-                        const repeater = {};
-                        headers.forEach((header, index) => {
-                            repeater[header] = values[index] || '';
-                        });
+                    try {
+                        const values = parseCSVLine(lines[i]);
                         
-                        // Parse coordinates if available
-                        if (repeater.coordinates) {
-                            const coordMatch = repeater.coordinates.match(/(\d+\.\d+)°?\s*N.*?(\d+\.\d+)°?\s*W/);
-                            if (coordMatch) {
-                                repeater.lat = parseFloat(coordMatch[1]);
-                                repeater.lon = -parseFloat(coordMatch[2]);
+                        if (values.length > 0) {
+                            const repeater = {};
+                            headers.forEach((header, index) => {
+                                repeater[header] = (values[index] || '').replace(/^"|"$/g, ''); // Remove quotes
+                            });
+                            
+                            // Parse coordinates if available
+                            if (repeater.coordinates) {
+                                const coordMatch = repeater.coordinates.match(/(\d+\.\d+)°?\s*N.*?(\d+\.\d+)°?\s*W/);
+                                if (coordMatch) {
+                                    repeater.lat = parseFloat(coordMatch[1]);
+                                    repeater.lon = -parseFloat(coordMatch[2]);
+                                }
                             }
+                            
+                            allRepeaters.push(repeater);
+                            successCount++;
                         }
-                        
-                        allRepeaters.push(repeater);
+                    } catch (error) {
+                        errorCount++;
+                        addDebug(`Error parsing line ${i}: ${error.message}`);
                     }
                 }
+            }
+            
+            addDebug(`Successfully parsed ${successCount} repeaters, ${errorCount} errors`);
+            
+            if (allRepeaters.length > 0) {
+                addDebug(`First repeater: ${JSON.stringify(allRepeaters[0])}`);
             }
             
             filteredRepeaters = [...allRepeaters];
@@ -266,7 +322,13 @@
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"') {
-                    inQuotes = !inQuotes;
+                    if (inQuotes && line[i + 1] === '"') {
+                        // Handle escaped quotes
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
                 } else if (char === ',' && !inQuotes) {
                     result.push(current.trim());
                     current = '';
@@ -426,21 +488,23 @@
             const tbody = document.getElementById('repeaterTableBody');
             tbody.innerHTML = '';
 
-            filteredRepeaters.forEach(repeater => {
+            addDebug(`Displaying ${filteredRepeaters.length} repeaters`);
+
+            filteredRepeaters.forEach((repeater, index) => {
                 const row = tbody.insertRow();
                 
                 const freqCell = row.insertCell();
-                freqCell.innerHTML = `<span class="frequency">${repeater.frequency}</span>`;
+                freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
                 
                 const callCell = row.insertCell();
-                callCell.innerHTML = `<span class="callsign">${repeater.call}</span>`;
+                callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
                 
-                row.insertCell().textContent = repeater.location;
-                row.insertCell().textContent = repeater.site_name;
-                row.insertCell().textContent = repeater.sponsor;
-                row.insertCell().textContent = repeater.ctcss;
-                row.insertCell().textContent = repeater.offset;
-                row.insertCell().textContent = repeater.elevation;
+                row.insertCell().textContent = repeater.location || '';
+                row.insertCell().textContent = repeater.site_name || '';
+                row.insertCell().textContent = repeater.sponsor || '';
+                row.insertCell().textContent = repeater.ctcss || '';
+                row.insertCell().textContent = repeater.offset || '';
+                row.insertCell().textContent = repeater.elevation || '';
                 
                 const distanceCell = row.insertCell();
                 if (repeater.distance) {
@@ -449,7 +513,7 @@
                     distanceCell.textContent = '';
                 }
                 
-                row.insertCell().textContent = repeater.info;
+                row.insertCell().textContent = repeater.info || '';
             });
         }
 
