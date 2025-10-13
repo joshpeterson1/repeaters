@@ -664,7 +664,16 @@
             // Group repeaters by location to handle overlapping points
             const locationGroups = {};
             mappableRepeaters.forEach(repeater => {
-                const key = `${repeater.lat.toFixed(6)},${repeater.lon.toFixed(6)}`;
+                // Ensure lat/lon are numbers before calling toFixed
+                const lat = parseFloat(repeater.lat);
+                const lon = parseFloat(repeater.lon);
+                
+                if (isNaN(lat) || isNaN(lon)) {
+                    addDebug(`Invalid coordinates for repeater ${repeater.call}: lat=${repeater.lat}, lon=${repeater.lon}`);
+                    return;
+                }
+                
+                const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
                 if (!locationGroups[key]) {
                     locationGroups[key] = [];
                 }
