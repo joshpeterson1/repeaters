@@ -36,6 +36,9 @@
             flex-direction: column;
             gap: 5px;
         }
+        .control-group.checkbox-stack {
+            gap: 8px;
+        }
         .control-group label {
             font-weight: bold;
             font-size: 12px;
@@ -413,19 +416,15 @@
                 <label for="callFilter">Call Sign:</label>
                 <input type="text" id="callFilter" placeholder="K7DAV" />
             </div>
-            <div class="control-group">
+            <div class="control-group checkbox-stack">
                 <label>
                     <input type="checkbox" id="wideCoverageFilter" />
                     Show Only Wide Coverage
                 </label>
-            </div>
-            <div class="control-group">
                 <label>
                     <input type="checkbox" id="drawIntertieLinksFilter" />
                     Draw Intertie Links
                 </label>
-            </div>
-            <div class="control-group">
                 <label>
                     <input type="checkbox" id="drawOtherLinksFilter" />
                     Draw Other Links
