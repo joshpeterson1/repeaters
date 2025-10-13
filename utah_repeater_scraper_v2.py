@@ -16,24 +16,58 @@ def scrape_raw_repeater_data():
         response = requests.get(raw_url)
         response.raise_for_status()
         
-        # The response appears to be wrapped in HTML, so we need to extract the CSV content
         content = response.text
         
-        # Find the CSV content between <pre> tags
+        # Try to find CSV content between <pre> tags first
         start_marker = '<pre style="word-wrap: break-word; white-space: pre-wrap;">'
         end_marker = '</pre>'
         
         start_idx = content.find(start_marker)
         end_idx = content.find(end_marker)
         
-        if start_idx == -1 or end_idx == -1:
-            raise ValueError("Could not find CSV data in the response")
+        if start_idx != -1 and end_idx != -1:
+            # Found pre tags, extract content
+            csv_content = content[start_idx + len(start_marker):end_idx].strip()
+        else:
+            # Try alternative pre tag format
+            alt_start = '<pre>'
+            alt_end = '</pre>'
+            start_idx = content.find(alt_start)
+            end_idx = content.find(alt_end)
+            
+            if start_idx != -1 and end_idx != -1:
+                csv_content = content[start_idx + len(alt_start):end_idx].strip()
+            else:
+                # If no pre tags found, look for CSV header directly
+                if 'BAND,OUTPUT,INPUT,STATE,LOCATION,CALLSIGN' in content:
+                    # Find the start of CSV data
+                    csv_start = content.find('BAND,OUTPUT,INPUT,STATE,LOCATION,CALLSIGN')
+                    if csv_start != -1:
+                        # Take everything from the header onwards
+                        csv_content = content[csv_start:].strip()
+                        # Remove any trailing HTML if present
+                        if '</body>' in csv_content:
+                            csv_content = csv_content[:csv_content.find('</body>')].strip()
+                        if '</html>' in csv_content:
+                            csv_content = csv_content[:csv_content.find('</html>')].strip()
+                    else:
+                        raise ValueError("Could not find CSV header in the response")
+                else:
+                    raise ValueError("Could not find CSV data in the response")
         
-        # Extract just the CSV content
-        csv_content = content[start_idx + len(start_marker):end_idx].strip()
+        # Clean up the CSV content
+        csv_content = csv_content.replace('\r\n', '\n').replace('\r', '\n')
         
         # Split into lines and process as CSV
         lines = csv_content.split('\n')
+        
+        # Remove empty lines
+        lines = [line for line in lines if line.strip()]
+        
+        if len(lines) < 2:
+            raise ValueError("Not enough CSV data found")
+        
+        print(f"Found CSV data with {len(lines)} lines")
         
         # Parse the CSV data
         repeaters = []
@@ -66,6 +100,11 @@ def scrape_raw_repeater_data():
         
     except Exception as e:
         print(f"Error fetching raw data: {e}")
+        print("Response content preview:")
+        try:
+            print(response.text[:500] + "..." if len(response.text) > 500 else response.text)
+        except:
+            print("Could not display response content")
         return []
 
 def process_raw_repeater_data(row):
