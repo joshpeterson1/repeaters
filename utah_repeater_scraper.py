@@ -52,14 +52,6 @@ def scrape_repeater_list():
             freq_match = re.search(r'([\d.]+)', freq_text)
             frequency = freq_match.group(1) if freq_match else ""
             
-            # Determine offset from the symbols in parentheses
-            offset = ""
-            if "(**--**)" in str(freq_cell) or "(**-**)" in str(freq_cell):
-                offset = "-"
-            elif "(**+**)" in str(freq_cell) or "(**++**)" in str(freq_cell):
-                offset = "+"
-            elif "(**--**)" not in str(freq_cell) and "(**+**)" not in str(freq_cell):
-                offset = "simplex"
             
             # Find the detail link (§ symbol)
             detail_link = freq_cell.find('a')
@@ -74,7 +66,6 @@ def scrape_repeater_list():
             
             repeater_data = {
                 'frequency': frequency,
-                'offset': offset,
                 'general_location': location,
                 'area': area,
                 'site_name': site_name,
@@ -124,6 +115,8 @@ def scrape_repeater_details(detail_url):
                         details['output_freq'] = value
                     elif 'input frequency' in key:
                         details['input_freq'] = value
+                    elif 'offset' in key:
+                        details['offset'] = value
                     elif 'elevation' in key:
                         details['elevation'] = value
                     elif 'coordinates' in key:
