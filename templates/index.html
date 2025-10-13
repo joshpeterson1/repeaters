@@ -409,6 +409,12 @@
                     Show Only Wide Coverage
                 </label>
             </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="drawLinksFilter" />
+                    Draw Links
+                </label>
+            </div>
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
             <button class="export-btn" onclick="exportKML()">Export KML</button>
@@ -470,6 +476,8 @@
         let selectedRepeater = null;
         let highlightedMarker = null;
         let lastDataUpdate = null;
+        let repeaterLinks = [];
+        let drawLinks = false;
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
 
         // Initialize Mapbox map
@@ -636,6 +644,39 @@
                     }
                 });
                 
+                // Add source and layer for repeater links
+                map.addSource('repeater-links', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    }
+                });
+                
+                map.addLayer({
+                    id: 'repeater-links-line',
+                    type: 'line',
+                    source: 'repeater-links',
+                    paint: {
+                        'line-color': [
+                            'case',
+                            ['==', ['get', 'linkType'], 'intertie'], '#ff6b35', // Orange for intertie
+                            '#28a745' // Green for regular links
+                        ],
+                        'line-width': [
+                            'case',
+                            ['==', ['get', 'linkType'], 'intertie'], 3, // Thicker for intertie
+                            2 // Normal for regular links
+                        ],
+                        'line-opacity': 0.8,
+                        'line-dasharray': [
+                            'case',
+                            ['==', ['get', 'linkType'], 'intertie'], [1, 0], // Solid for intertie
+                            [2, 2] // Dashed for regular links
+                        ]
+                    }
+                });
+                
                 // Click events for clusters
                 map.on('click', 'clusters', function(e) {
                     e.originalEvent.stopPropagation(); // Prevent map click event
@@ -799,12 +840,24 @@
                 features: features
             });
             
+            // Update links if enabled
+            if (drawLinks) {
+                updateRepeaterLinks();
+            } else {
+                // Clear links
+                map.getSource('repeater-links').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+            
             // Update map stats
             const mapStats = document.getElementById('mapStats');
             const mappableCount = mappableRepeaters.length;
             const totalCount = filteredRepeaters.length;
             const locationCount = Object.keys(locationGroups).length;
-            mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations on map`;
+            const linkCount = drawLinks ? repeaterLinks.length : 0;
+            mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations${linkCount > 0 ? `, ${linkCount} links` : ''} on map`;
         }
 
         function fitMapToRepeaters() {
@@ -1197,8 +1250,160 @@
                 }
             });
             
+            // Parse and build repeater links
+            parseRepeaterLinks();
+            
             // Update filtered repeaters as well
             filteredRepeaters = [...allRepeaters];
+        }
+
+        function parseRepeaterLinks() {
+            repeaterLinks = [];
+            const linkMap = new Map(); // Track bidirectional links
+            const intertieRepeaters = [];
+            
+            allRepeaters.forEach(repeater => {
+                if (!repeater.lat || !repeater.lon) return;
+                
+                // Check for intertie systems
+                const infoText = (repeater.info || '').toLowerCase();
+                const notesText = (repeater.notes || '').toLowerCase();
+                const linkFreqText = (repeater.link_freq || '').toLowerCase();
+                
+                if (infoText.includes('intertie') || notesText.includes('intertie') || linkFreqText.includes('intertie')) {
+                    intertieRepeaters.push(repeater);
+                    return;
+                }
+                
+                // Parse link frequencies from various fields
+                const linkFrequencies = extractLinkFrequencies(repeater);
+                
+                linkFrequencies.forEach(linkFreq => {
+                    // Find the linked repeater
+                    const linkedRepeater = findRepeaterByFrequency(linkFreq);
+                    if (linkedRepeater && linkedRepeater !== repeater && linkedRepeater.lat && linkedRepeater.lon) {
+                        // Check if the linked repeater also references this one (bidirectional)
+                        const reverseLinks = extractLinkFrequencies(linkedRepeater);
+                        const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
+                        
+                        if (reverseLinks.some(freq => Math.abs(freq - repeaterFreq) < 0.001)) {
+                            // Create a unique key for this link pair
+                            const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
+                            
+                            if (!linkMap.has(linkKey)) {
+                                linkMap.set(linkKey, true);
+                                repeaterLinks.push({
+                                    from: repeater,
+                                    to: linkedRepeater,
+                                    type: 'frequency',
+                                    linkFreq: linkFreq
+                                });
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Create intertie links (all-to-all for intertie repeaters)
+            for (let i = 0; i < intertieRepeaters.length; i++) {
+                for (let j = i + 1; j < intertieRepeaters.length; j++) {
+                    repeaterLinks.push({
+                        from: intertieRepeaters[i],
+                        to: intertieRepeaters[j],
+                        type: 'intertie'
+                    });
+                }
+            }
+            
+            addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
+        }
+
+        function extractLinkFrequencies(repeater) {
+            const frequencies = [];
+            const fields = [
+                repeater.info || '',
+                repeater.notes || '',
+                repeater.link_freq || '',
+                repeater.linked || ''
+            ];
+            
+            fields.forEach(field => {
+                if (!field) return;
+                
+                // Look for various link patterns
+                const patterns = [
+                    /L\s*(\d+\.?\d*)/gi,           // L147.12, L 146.52
+                    /Link\s*(\d+\.?\d*)/gi,       // Link 447.9
+                    /Linked?\s*:?\s*(\d+\.?\d*)/gi, // Linked: 146.52
+                    /(\d{3}\.\d+)/g               // Any frequency pattern like 146.52
+                ];
+                
+                patterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.exec(field)) !== null) {
+                        const freq = parseFloat(match[1]);
+                        // Validate frequency ranges for amateur radio
+                        if ((freq >= 28 && freq <= 29.7) ||    // 10m
+                            (freq >= 50 && freq <= 54) ||      // 6m
+                            (freq >= 144 && freq <= 148) ||    // 2m
+                            (freq >= 222 && freq <= 225) ||    // 1.25m
+                            (freq >= 420 && freq <= 450) ||    // 70cm
+                            (freq >= 902 && freq <= 928) ||    // 33cm
+                            (freq >= 1240 && freq <= 1300)) {  // 23cm
+                            frequencies.push(freq);
+                        }
+                    }
+                });
+            });
+            
+            return [...new Set(frequencies)]; // Remove duplicates
+        }
+
+        function findRepeaterByFrequency(frequency) {
+            return allRepeaters.find(repeater => {
+                const outputFreq = parseFloat(repeater.frequency || repeater.output_frequency);
+                const inputFreq = parseFloat(repeater.input_frequency);
+                
+                return Math.abs(outputFreq - frequency) < 0.001 || 
+                       Math.abs(inputFreq - frequency) < 0.001;
+            });
+        }
+
+        function updateRepeaterLinks() {
+            if (!map || !mapInitialized) return;
+            
+            const linkFeatures = [];
+            
+            repeaterLinks.forEach(link => {
+                // Only show links for repeaters that are currently filtered/visible
+                const fromVisible = filteredRepeaters.includes(link.from);
+                const toVisible = filteredRepeaters.includes(link.to);
+                
+                if (fromVisible && toVisible) {
+                    linkFeatures.push({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [
+                                [link.from.lon, link.from.lat],
+                                [link.to.lon, link.to.lat]
+                            ]
+                        },
+                        properties: {
+                            linkType: link.type,
+                            fromCall: link.from.call,
+                            toCall: link.to.call,
+                            fromFreq: link.from.frequency || link.from.output_frequency,
+                            toFreq: link.to.frequency || link.to.output_frequency
+                        }
+                    });
+                }
+            });
+            
+            map.getSource('repeater-links').setData({
+                type: 'FeatureCollection',
+                features: linkFeatures
+            });
         }
 
 
@@ -1248,6 +1453,7 @@
             const selectedBands = Array.from(bandFilterSelect.selectedOptions).map(option => option.value);
             const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
             const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
+            drawLinks = document.getElementById('drawLinksFilter').checked;
 
             // Get user location if ZIP code provided
             if (zipCode && zipCode !== '') {
@@ -1294,6 +1500,11 @@
 
             displayRepeaters();
             updateStats();
+            
+            // Update map if visible
+            if (currentView !== 'table') {
+                updateMapData();
+            }
         }
 
         function clearFilters() {
@@ -1304,6 +1515,8 @@
             Array.from(bandFilter.options).forEach(option => option.selected = false);
             document.getElementById('callFilter').value = '';
             document.getElementById('wideCoverageFilter').checked = false;
+            document.getElementById('drawLinksFilter').checked = false;
+            drawLinks = false;
             userLocation = null;
             
             // Clear distances
