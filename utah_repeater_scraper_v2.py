@@ -238,14 +238,18 @@ def save_to_csv_v2(repeaters, filename='utah_repeaters_v2.csv'):
         print("No repeater data to save")
         return
     
+    # Add version indicator to each repeater record
+    for repeater in repeaters:
+        repeater['scraper_version'] = 'v2'
+    
     # Get all possible field names
     all_fields = set()
     for repeater in repeaters:
         all_fields.update(repeater.keys())
     
-    # Define preferred field order
+    # Define preferred field order (including version indicator first)
     preferred_order = [
-        'call', 'frequency', 'output_frequency', 'input_frequency', 'offset',
+        'scraper_version', 'call', 'frequency', 'output_frequency', 'input_frequency', 'offset',
         'band', 'band_name', 'location', 'site_name', 'sponsor', 'area',
         'ctcss_in', 'ctcss_out', 'dcs_code', 'lat', 'lon', 'latitude', 'longitude',
         'elevation_feet', 'active', 'open', 'closed', 'wide_area', 'linked',

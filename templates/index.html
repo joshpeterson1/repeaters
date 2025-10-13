@@ -267,12 +267,16 @@
         <div class="scrape-section">
             <h3>Data Management</h3>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <button id="scrapeBtn" class="scrape-btn" onclick="startScrape()">Scrape New Data</button>
+                <button id="scrapeBtn" class="scrape-btn" onclick="startScrape()">Scrape New Data (v2.0)</button>
                 <button onclick="loadData()">Load Latest Data</button>
                 <a href="/download/csv" target="_blank">
                     <button class="export-btn">Download CSV</button>
                 </a>
                 <div class="last-updated" id="lastUpdated"></div>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                <strong>v2.0 Scraper:</strong> Uses raw CSV data, filters inactive repeaters, much faster than v1.0
             </div>
             
             <div class="progress-container" id="progressContainer">
@@ -999,6 +1003,11 @@
                 } else {
                     allRepeaters = data.repeaters;
                     filteredRepeaters = [...allRepeaters];
+                    
+                    // Process data based on version
+                    const dataVersion = data.data_version || 'v1';
+                    processRepeaterData(dataVersion);
+                    
                     displayRepeaters();
                     updateStats();
                     
@@ -1009,14 +1018,45 @@
                     // Update last updated time
                     const lastUpdated = document.getElementById('lastUpdated');
                     const updateTime = new Date(data.last_updated).toLocaleString();
-                    lastUpdated.textContent = `Last updated: ${updateTime}`;
+                    const versionText = dataVersion === 'v2' ? ' (v2.0 data)' : ' (v1.0 data)';
+                    lastUpdated.textContent = `Last updated: ${updateTime}${versionText}`;
                     
-                    showMessage(`Loaded ${data.count} repeaters`, 'success');
+                    showMessage(`Loaded ${data.count} repeaters using ${dataVersion} format`, 'success');
                 }
             })
             .catch(error => {
                 showMessage('Error loading data: ' + error.message, 'error');
             });
+        }
+
+        function processRepeaterData(version) {
+            allRepeaters.forEach(repeater => {
+                if (version === 'v2') {
+                    // v2 data processing
+                    // Map v2 fields to expected frontend fields
+                    repeater.general_location = repeater.location || repeater.general_location || '';
+                    repeater.ctcss = repeater.ctcss_in || repeater.ctcss_out || '';
+                    repeater.elevation = repeater.elevation_feet || '';
+                    repeater.info = repeater.notes || '';
+                    
+                    // Create a combined info field with additional v2 data
+                    let infoItems = [];
+                    if (repeater.notes) infoItems.push(repeater.notes);
+                    if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
+                    if (repeater.linked === 'Y' && repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
+                    if (repeater.emergency_power === 'Y') infoItems.push('Emergency Power');
+                    if (repeater.autopatch === 'Y') infoItems.push('Autopatch');
+                    
+                    repeater.info = infoItems.join(', ');
+                    
+                } else {
+                    // v1 data - already in expected format
+                    // No additional processing needed
+                }
+            });
+            
+            // Update filtered repeaters as well
+            filteredRepeaters = [...allRepeaters];
         }
 
 
