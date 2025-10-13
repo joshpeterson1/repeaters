@@ -605,11 +605,16 @@
                 // Update map with any existing data
                 if (filteredRepeaters.length > 0) {
                     addDebug('Map loaded, updating with existing data');
-                    updateMapData();
+                    setTimeout(() => updateMapData(), 100);
                 }
             });
             
             mapInitialized = true;
+            
+            // If we have data waiting, update the map now
+            if (filteredRepeaters.length > 0) {
+                setTimeout(() => updateMapData(), 500);
+            }
         }
 
         function createPopupContent(repeater, isMultiple = false, groupIndex = 0, totalInGroup = 1) {
@@ -638,19 +643,23 @@
         }
 
         function updateMapData() {
+            addDebug(`updateMapData called - map: ${!!map}, mapInitialized: ${mapInitialized}, filteredRepeaters: ${filteredRepeaters.length}`);
+            
             if (!map || !mapInitialized) {
                 addDebug('Map not ready for data update');
                 return;
             }
             
             // Check if the repeaters source exists
-            if (!map.getSource('repeaters')) {
+            const repeatersSource = map.getSource('repeaters');
+            if (!repeatersSource) {
                 addDebug('Repeaters source not ready, waiting...');
                 setTimeout(updateMapData, 500);
                 return;
             }
             
             const mappableRepeaters = filteredRepeaters.filter(repeater => repeater.lat && repeater.lon);
+            addDebug(`Found ${mappableRepeaters.length} mappable repeaters out of ${filteredRepeaters.length} total`);
             
             // Group repeaters by location to handle overlapping points
             const locationGroups = {};
@@ -708,10 +717,15 @@
                 }
             });
             
-            map.getSource('repeaters').setData({
+            const geoJsonData = {
                 type: 'FeatureCollection',
                 features: features
-            });
+            };
+            
+            addDebug(`Setting map data with ${features.length} features`);
+            addDebug(`First feature: ${features.length > 0 ? JSON.stringify(features[0]) : 'none'}`);
+            
+            map.getSource('repeaters').setData(geoJsonData);
             
             // Update map stats
             const mapStats = document.getElementById('mapStats');
@@ -721,6 +735,7 @@
             mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations on map`;
             
             addDebug(`Updated map with ${mappableCount} repeaters at ${locationCount} locations`);
+            addDebug(`Map source now has: ${JSON.stringify(map.getSource('repeaters')._data)}`);
         }
 
         function fitMapToRepeaters() {
@@ -1014,10 +1029,13 @@
                     displayRepeaters();
                     updateStats();
                     
-                    // Update map data if map is visible and initialized
-                    if (currentView !== 'table' && mapInitialized) {
-                        updateMapData();
-                    }
+                    // ALWAYS try to update map data, regardless of view
+                    setTimeout(() => {
+                        if (mapInitialized) {
+                            addDebug('Updating map after data load');
+                            updateMapData();
+                        }
+                    }, 100);
                     
                     // Update last updated time
                     const lastUpdated = document.getElementById('lastUpdated');
