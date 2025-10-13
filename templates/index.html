@@ -152,6 +152,18 @@
         tr:hover {
             background-color: #e8f4f8;
         }
+        tr.selected {
+            background-color: #007bff !important;
+            color: white;
+        }
+        tr.selected .frequency,
+        tr.selected .callsign,
+        tr.selected .distance {
+            color: white !important;
+        }
+        .table-row-clickable {
+            cursor: pointer;
+        }
         .table-container {
             max-height: 600px;
             overflow-y: auto;
@@ -473,6 +485,28 @@
                     }
                 });
                 
+                // Add highlighted repeater layer (for selected repeater)
+                map.addSource('highlighted-repeater', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    }
+                });
+                
+                map.addLayer({
+                    id: 'highlighted-point',
+                    type: 'circle',
+                    source: 'highlighted-repeater',
+                    paint: {
+                        'circle-color': '#ff0000',
+                        'circle-radius': 15,
+                        'circle-stroke-width': 4,
+                        'circle-stroke-color': '#ffffff',
+                        'circle-opacity': 0.8
+                    }
+                });
+                
                 // Click events for clusters
                 map.on('click', 'clusters', function(e) {
                     const features = map.queryRenderedFeatures(e.point, {
@@ -675,6 +709,79 @@
             }
         }
 
+        function selectRepeaterOnMap(repeater) {
+            if (!map || !mapInitialized || !repeater.lat || !repeater.lon) return;
+            
+            // Store selected repeater
+            selectedRepeater = repeater;
+            
+            // Update highlighted repeater source
+            map.getSource('highlighted-repeater').setData({
+                type: 'FeatureCollection',
+                features: [{
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [repeater.lon, repeater.lat]
+                    },
+                    properties: {}
+                }]
+            });
+            
+            // Center map on the repeater
+            map.flyTo({
+                center: [repeater.lon, repeater.lat],
+                zoom: Math.max(map.getZoom(), 12) // Zoom in if not already zoomed
+            });
+            
+            // Show popup for the selected repeater
+            setTimeout(() => {
+                const popupContent = createPopupContent(repeater);
+                new mapboxgl.Popup()
+                    .setLngLat([repeater.lon, repeater.lat])
+                    .setHTML(popupContent)
+                    .addTo(map);
+            }, 500); // Delay to let the map finish flying
+            
+            addDebug(`Selected repeater: ${repeater.call} on map`);
+        }
+
+        function clearRepeaterSelection() {
+            selectedRepeater = null;
+            
+            // Clear highlighted repeater
+            if (map && mapInitialized) {
+                map.getSource('highlighted-repeater').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+            
+            // Remove selected class from all table rows
+            document.querySelectorAll('#repeaterTableBody tr').forEach(row => {
+                row.classList.remove('selected');
+            });
+        }
+
+        function handleRowClick(repeater, rowElement) {
+            // Clear previous selection
+            clearRepeaterSelection();
+            
+            // Select the clicked row
+            rowElement.classList.add('selected');
+            
+            // If map is visible, show on map
+            if (currentView !== 'table') {
+                selectRepeaterOnMap(repeater);
+            } else {
+                // If only table view, switch to both view to show on map
+                showBothViews();
+                setTimeout(() => {
+                    selectRepeaterOnMap(repeater);
+                }, 1000); // Wait for map to initialize
+            }
+        }
+
         function showTableView() {
             currentView = 'table';
             document.getElementById('mapContainer').style.display = 'none';
@@ -683,6 +790,8 @@
             document.getElementById('tableViewBtn').classList.add('active');
             document.getElementById('mapViewBtn').classList.remove('active');
             document.getElementById('bothViewBtn').classList.remove('active');
+            
+            clearRepeaterSelection();
         }
 
         function showMapView() {
@@ -704,6 +813,8 @@
             document.getElementById('tableViewBtn').classList.remove('active');
             document.getElementById('mapViewBtn').classList.add('active');
             document.getElementById('bothViewBtn').classList.remove('active');
+            
+            clearRepeaterSelection();
             
             // Resize map after showing
             setTimeout(() => {
@@ -1134,13 +1245,18 @@
             filteredRepeaters.forEach((repeater, index) => {
                 const row = tbody.insertRow();
                 
+                // Make row clickable
+                row.classList.add('table-row-clickable');
+                row.title = 'Click to show on map';
+                row.addEventListener('click', () => handleRowClick(repeater, row));
+                
                 const freqCell = row.insertCell();
                 freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
                 
                 const callCell = row.insertCell();
                 callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
                 
-                row.insertCell().textContent = repeater.general_location || '';
+                row.insertCell().textContent = repeater.location || repeater.general_location || '';
                 row.insertCell().textContent = repeater.site_name || '';
                 row.insertCell().textContent = repeater.sponsor || '';
                 row.insertCell().textContent = repeater.ctcss || '';
