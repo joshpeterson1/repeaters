@@ -671,8 +671,8 @@
                         'line-opacity': 0.8,
                         'line-dasharray': [
                             'case',
-                            ['==', ['get', 'linkType'], 'intertie'], [1, 0], // Solid for intertie
-                            [2, 2] // Dashed for regular links
+                            ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
+                            ['literal', [2, 2]] // Dashed for regular links
                         ]
                     }
                 });
