@@ -21,57 +21,79 @@ def scrape_repeater_list():
     for table in tables:
         rows = table.find_all('tr')
         
-        for row in rows[1:]:  # Skip header row
+        # Skip if no rows or if it's not a repeater table
+        if len(rows) < 2:
+            continue
+            
+        # Check if this looks like a repeater table by examining headers
+        header_row = rows[0]
+        header_text = header_row.get_text().lower()
+        if 'freq' not in header_text or 'call' not in header_text:
+            continue
+        
+        # Process data rows
+        for row in rows[1:]:
             cells = row.find_all('td')
-            if len(cells) >= 8:  # Ensure we have enough columns
-                # Extract basic info from main table
-                freq_cell = cells[0]
-                location = cells[1].get_text(strip=True)
-                area = cells[2].get_text(strip=True)
-                site_name = cells[3].get_text(strip=True)
-                call = cells[4].get_text(strip=True)
-                sponsor = cells[5].get_text(strip=True)
-                ctcss = cells[6].get_text(strip=True)
-                info = cells[7].get_text(strip=True)
+            if len(cells) < 8:  # Need at least 8 columns for basic data
+                continue
                 
-                # Extract frequency and offset from first cell
-                freq_text = freq_cell.get_text(strip=True)
-                freq_match = re.search(r'([\d.]+)', freq_text)
-                frequency = freq_match.group(1) if freq_match else ""
-                
-                offset = ""
-                if "(**--**)" in str(freq_cell):
-                    offset = "-"
-                elif "(**+**)" in str(freq_cell):
-                    offset = "+"
-                
-                # Find the detail link (§ symbol)
-                detail_link = freq_cell.find('a')
-                detail_url = ""
-                if detail_link:
-                    detail_url = urljoin(base_url, detail_link.get('href'))
-                
-                repeater_data = {
-                    'frequency': frequency,
-                    'offset': offset,
-                    'location': location,
-                    'area': area,
-                    'site_name': site_name,
-                    'call': call,
-                    'sponsor': sponsor,
-                    'ctcss': ctcss,
-                    'info': info,
-                    'detail_url': detail_url
-                }
-                
-                # Get additional details if detail URL exists
-                if detail_url:
-                    print(f"Scraping details for {call} on {frequency}...")
-                    additional_data = scrape_repeater_details(detail_url)
-                    repeater_data.update(additional_data)
-                    time.sleep(1)  # Be polite to the server
-                
-                repeaters.append(repeater_data)
+            # Extract basic info from main table
+            freq_cell = cells[0]
+            location = cells[1].get_text(strip=True)
+            area = cells[2].get_text(strip=True)
+            site_name = cells[3].get_text(strip=True)
+            call = cells[4].get_text(strip=True)
+            sponsor = cells[5].get_text(strip=True)
+            ctcss = cells[6].get_text(strip=True)
+            info = cells[7].get_text(strip=True)
+            
+            # Extract frequency and offset from first cell
+            freq_text = freq_cell.get_text(strip=True)
+            freq_match = re.search(r'([\d.]+)', freq_text)
+            frequency = freq_match.group(1) if freq_match else ""
+            
+            # Determine offset from the symbols in parentheses
+            offset = ""
+            if "(**--**)" in str(freq_cell) or "(**-**)" in str(freq_cell):
+                offset = "-"
+            elif "(**+**)" in str(freq_cell) or "(**++**)" in str(freq_cell):
+                offset = "+"
+            elif "(**--**)" not in str(freq_cell) and "(**+**)" not in str(freq_cell):
+                offset = "simplex"
+            
+            # Find the detail link (§ symbol)
+            detail_link = freq_cell.find('a')
+            detail_url = ""
+            if detail_link:
+                detail_url = urljoin(base_url, detail_link.get('href'))
+            
+            # Extract links from last column if it exists
+            links = ""
+            if len(cells) > 8:
+                links = cells[8].get_text(strip=True)
+            
+            repeater_data = {
+                'frequency': frequency,
+                'offset': offset,
+                'general_location': location,
+                'area': area,
+                'site_name': site_name,
+                'call': call,
+                'sponsor': sponsor,
+                'ctcss': ctcss,
+                'info': info,
+                'links': links,
+                'detail_url': detail_url
+            }
+            
+            # Get additional details if detail URL exists
+            if detail_url:
+                print(f"Scraping details for {call} on {frequency}...")
+                additional_data = scrape_repeater_details(detail_url)
+                repeater_data.update(additional_data)
+                time.sleep(0.5)  # Be polite to the server
+            
+            repeaters.append(repeater_data)
     
     return repeaters
 
@@ -83,7 +105,7 @@ def scrape_repeater_details(detail_url):
         
         details = {}
         
-        # Find all table cells and extract key-value pairs
+        # Find all tables in the detail page
         tables = soup.find_all('table')
         
         for table in tables:
@@ -91,23 +113,39 @@ def scrape_repeater_details(detail_url):
             for row in rows:
                 cells = row.find_all('td')
                 if len(cells) >= 2:
-                    key = cells[0].get_text(strip=True).replace(':', '').lower()
-                    value = cells[1].get_text(strip=True)
+                    key_cell = cells[0]
+                    value_cell = cells[1]
                     
-                    # Map common fields
-                    field_mapping = {
-                        'output frequency': 'output_freq',
-                        'input frequency': 'input_freq',
-                        'elevation': 'elevation',
-                        'coordinates': 'coordinates',
-                        'coordinated': 'coordinated_date',
-                        'info updated': 'info_updated',
-                        'coverage': 'coverage',
-                        'web site': 'website'
-                    }
+                    key = key_cell.get_text(strip=True).replace(':', '').lower()
+                    value = value_cell.get_text(strip=True)
                     
-                    mapped_key = field_mapping.get(key, key.replace(' ', '_'))
-                    details[mapped_key] = value
+                    # Clean up and map the fields
+                    if 'output frequency' in key:
+                        details['output_freq'] = value
+                    elif 'input frequency' in key:
+                        details['input_freq'] = value
+                    elif 'elevation' in key:
+                        details['elevation'] = value
+                    elif 'coordinates' in key:
+                        details['coordinates'] = value
+                    elif 'coordinated' in key:
+                        details['coordinated_date'] = value
+                    elif 'info updated' in key:
+                        details['info_updated'] = value
+                    elif 'coverage' in key:
+                        details['coverage'] = value
+                    elif 'web site' in key:
+                        details['website'] = value
+                    elif 'features' in key:
+                        details['features'] = value
+                    elif 'erp' in key:
+                        details['erp'] = value
+                    elif 'mail address' in key:
+                        details['mail_address'] = value
+                    elif 'open/closed' in key:
+                        details['open_closed'] = value
+                    elif 'repeater callsign' in key:
+                        details['repeater_callsign'] = value
         
         return details
         
