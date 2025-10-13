@@ -397,12 +397,7 @@
                 container: 'map',
                 style: 'mapbox://styles/mapbox/outdoors-v12', // Good for radio coverage
                 center: [-111.8910, 40.7608], // Salt Lake City center
-                zoom: 8,
-                // Restrict panning to Utah bounds
-                maxBounds: [
-                    [-114.052962, 36.997968], // Southwest corner of Utah
-                    [-109.041058, 42.001567]  // Northeast corner of Utah
-                ]
+                zoom: 8
             });
             
             map.on('load', function() {
