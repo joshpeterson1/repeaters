@@ -421,8 +421,14 @@
             </div>
             <div class="control-group">
                 <label>
-                    <input type="checkbox" id="drawLinksFilter" />
-                    Draw Links
+                    <input type="checkbox" id="drawIntertieLinksFilter" />
+                    Draw Intertie Links
+                </label>
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="drawOtherLinksFilter" />
+                    Draw Other Links
                 </label>
             </div>
             <button onclick="applyFilters()">Apply Filters</button>
@@ -486,7 +492,8 @@
         let highlightedMarker = null;
         let lastDataUpdate = null;
         let repeaterLinks = [];
-        let drawLinks = false;
+        let drawIntertieLinks = false;
+        let drawOtherLinks = false;
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
 
         // Initialize Mapbox map
@@ -845,8 +852,8 @@
                 features: features
             });
             
-            // Update links if enabled
-            if (drawLinks) {
+            // Update links if any are enabled
+            if (drawIntertieLinks || drawOtherLinks) {
                 updateRepeaterLinks();
             } else {
                 // Clear links
@@ -861,7 +868,10 @@
             const mappableCount = mappableRepeaters.length;
             const totalCount = filteredRepeaters.length;
             const locationCount = Object.keys(locationGroups).length;
-            const linkCount = drawLinks ? repeaterLinks.length : 0;
+            const linkCount = (drawIntertieLinks || drawOtherLinks) ? repeaterLinks.filter(link => {
+                return (drawIntertieLinks && link.type === 'intertie') || 
+                       (drawOtherLinks && link.type !== 'intertie');
+            }).length : 0;
             mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations${linkCount > 0 ? `, ${linkCount} links` : ''} on map`;
         }
 
@@ -1395,7 +1405,11 @@
                 const fromVisible = filteredRepeaters.includes(link.from);
                 const toVisible = filteredRepeaters.includes(link.to);
                 
-                if (fromVisible && toVisible) {
+                // Check if this link type should be drawn
+                const shouldDrawLink = (link.type === 'intertie' && drawIntertieLinks) || 
+                                     (link.type !== 'intertie' && drawOtherLinks);
+                
+                if (fromVisible && toVisible && shouldDrawLink) {
                     // Find the actual rendered coordinates for both repeaters
                     const fromCoords = findRepeaterRenderCoords(link.from);
                     const toCoords = findRepeaterRenderCoords(link.to);
@@ -1524,7 +1538,8 @@
             const selectedBands = Array.from(bandFilterSelect.selectedOptions).map(option => option.value);
             const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
             const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
-            drawLinks = document.getElementById('drawLinksFilter').checked;
+            drawIntertieLinks = document.getElementById('drawIntertieLinksFilter').checked;
+            drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
 
             // Get user location if ZIP code provided
             if (zipCode && zipCode !== '') {
@@ -1586,8 +1601,10 @@
             Array.from(bandFilter.options).forEach(option => option.selected = false);
             document.getElementById('callFilter').value = '';
             document.getElementById('wideCoverageFilter').checked = false;
-            document.getElementById('drawLinksFilter').checked = false;
-            drawLinks = false;
+            document.getElementById('drawIntertieLinksFilter').checked = false;
+            document.getElementById('drawOtherLinksFilter').checked = false;
+            drawIntertieLinks = false;
+            drawOtherLinks = false;
             userLocation = null;
             
             // Clear distances
