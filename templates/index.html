@@ -663,21 +663,17 @@
                     type: 'line',
                     source: 'repeater-links',
                     paint: {
-                        'line-color': [
-                            'case',
-                            ['==', ['get', 'linkType'], 'intertie'], '#ff6b35', // Orange for intertie
-                            '#28a745' // Green for regular links
-                        ],
+                        'line-color': ['get', 'linkColor'], // Use the color from properties
                         'line-width': [
                             'case',
-                            ['==', ['get', 'linkType'], 'intertie'], 3, // Thicker for intertie
-                            2 // Normal for regular links
+                            ['==', ['get', 'linkType'], 'intertie'], 4, // Thicker for intertie
+                            3 // Normal for regular links
                         ],
-                        'line-opacity': 0.8,
+                        'line-opacity': 0.9,
                         'line-dasharray': [
                             'case',
                             ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
-                            ['literal', [2, 2]] // Dashed for regular links
+                            ['literal', [3, 3]] // Dashed for regular links
                         ]
                     }
                 });
@@ -1378,6 +1374,17 @@
             if (!map || !mapInitialized) return;
             
             const linkFeatures = [];
+            const linkColorMap = new Map(); // Track colors for each link pair
+            let colorIndex = 0;
+            
+            // Define a palette of distinct colors for links
+            const linkColors = [
+                '#FF0000', // Red (reserved for intertie)
+                '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+                '#FFA500', '#800080', '#008000', '#000080', '#800000',
+                '#808000', '#008080', '#C0C0C0', '#FF69B4', '#32CD32',
+                '#FFD700', '#FF4500', '#9932CC', '#00CED1', '#DC143C'
+            ];
             
             repeaterLinks.forEach(link => {
                 // Only show links for repeaters that are currently filtered/visible
@@ -1385,23 +1392,40 @@
                 const toVisible = filteredRepeaters.includes(link.to);
                 
                 if (fromVisible && toVisible) {
-                    linkFeatures.push({
-                        type: 'Feature',
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: [
-                                [link.from.lon, link.from.lat],
-                                [link.to.lon, link.to.lat]
-                            ]
-                        },
-                        properties: {
-                            linkType: link.type,
-                            fromCall: link.from.call,
-                            toCall: link.to.call,
-                            fromFreq: link.from.frequency || link.from.output_frequency,
-                            toFreq: link.to.frequency || link.to.output_frequency
+                    // Find the actual rendered coordinates for both repeaters
+                    const fromCoords = findRepeaterRenderCoords(link.from);
+                    const toCoords = findRepeaterRenderCoords(link.to);
+                    
+                    if (fromCoords && toCoords) {
+                        // Generate unique color for this link pair
+                        let linkColor;
+                        if (link.type === 'intertie') {
+                            linkColor = '#FF0000'; // Red for intertie
+                        } else {
+                            const linkKey = [link.from.call, link.to.call].sort().join('-');
+                            if (!linkColorMap.has(linkKey)) {
+                                linkColorMap.set(linkKey, linkColors[colorIndex % linkColors.length]);
+                                colorIndex++;
+                            }
+                            linkColor = linkColorMap.get(linkKey);
                         }
-                    });
+                        
+                        linkFeatures.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: [fromCoords, toCoords]
+                            },
+                            properties: {
+                                linkType: link.type,
+                                linkColor: linkColor,
+                                fromCall: link.from.call,
+                                toCall: link.to.call,
+                                fromFreq: link.from.frequency || link.from.output_frequency,
+                                toFreq: link.to.frequency || link.to.output_frequency
+                            }
+                        });
+                    }
                 }
             });
             
@@ -1409,6 +1433,44 @@
                 type: 'FeatureCollection',
                 features: linkFeatures
             });
+        }
+
+        function findRepeaterRenderCoords(repeater) {
+            // Find the actual coordinates used for rendering this repeater
+            if (!repeater.lat || !repeater.lon) return null;
+            
+            // Check if this repeater is part of a multi-repeater location
+            const mappableRepeaters = filteredRepeaters.filter(r => r.lat && r.lon);
+            const locationKey = `${repeater.lat.toFixed(6)},${repeater.lon.toFixed(6)}`;
+            
+            // Find all repeaters at this location
+            const repeatersAtLocation = mappableRepeaters.filter(r => {
+                const rKey = `${r.lat.toFixed(6)},${r.lon.toFixed(6)}`;
+                return rKey === locationKey;
+            });
+            
+            if (repeatersAtLocation.length === 1) {
+                // Single repeater, use original coordinates
+                return [repeater.lon, repeater.lat];
+            } else {
+                // Multiple repeaters, find the offset coordinates
+                const repeaterIndex = repeatersAtLocation.findIndex(r => 
+                    r.call === repeater.call && 
+                    (r.frequency || r.output_frequency) === (repeater.frequency || repeater.output_frequency)
+                );
+                
+                if (repeaterIndex !== -1) {
+                    // Calculate the same offset used in updateMapData
+                    const offsetDistance = 0.0001;
+                    const angle = (repeaterIndex / repeatersAtLocation.length) * 2 * Math.PI;
+                    const offsetLat = repeater.lat + (offsetDistance * Math.cos(angle));
+                    const offsetLon = repeater.lon + (offsetDistance * Math.sin(angle));
+                    return [offsetLon, offsetLat];
+                }
+            }
+            
+            // Fallback to original coordinates
+            return [repeater.lon, repeater.lat];
         }
 
 
