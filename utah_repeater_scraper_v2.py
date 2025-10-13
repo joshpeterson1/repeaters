@@ -79,7 +79,8 @@ def scrape_raw_repeater_data():
         for row in csv_reader:
             # CRITICAL: Filter based on active state field (19th field)
             # Only include repeaters with 'Y' (active) or 'T' (temporarily off air)
-            active_state = row.get('Active', '').strip().upper()
+            active_state_raw = row.get('Active', '')
+            active_state = active_state_raw.strip().upper() if active_state_raw is not None else ''
             
             if active_state not in ['Y', 'T']:
                 inactive_count += 1
@@ -111,66 +112,71 @@ def process_raw_repeater_data(row):
     """
     Process a single row of raw repeater data into a clean format.
     """
+    # Helper function to safely get and strip values
+    def safe_get(key, default=''):
+        value = row.get(key, default)
+        return value.strip() if value is not None else default
+    
     # Map the raw CSV fields to cleaner field names
     repeater = {}
     
     # Basic repeater information
-    repeater['band'] = row.get('BAND', '').strip()
-    repeater['output_frequency'] = row.get('OUTPUT', '').strip()
-    repeater['input_frequency'] = row.get('INPUT', '').strip()
-    repeater['state'] = row.get('STATE', '').strip()
-    repeater['location'] = row.get('LOCATION', '').strip()
-    repeater['call'] = row.get('CALLSIGN', '').strip()
-    repeater['sponsor'] = row.get('SPONSOR', '').strip()
-    repeater['source'] = row.get('SOURCE', '').strip()
-    repeater['area'] = row.get('AREA', '').strip()
+    repeater['band'] = safe_get('BAND')
+    repeater['output_frequency'] = safe_get('OUTPUT')
+    repeater['input_frequency'] = safe_get('INPUT')
+    repeater['state'] = safe_get('STATE')
+    repeater['location'] = safe_get('LOCATION')
+    repeater['call'] = safe_get('CALLSIGN')
+    repeater['sponsor'] = safe_get('SPONSOR')
+    repeater['source'] = safe_get('SOURCE')
+    repeater['area'] = safe_get('AREA')
     
     # Operational details
-    repeater['coordinated'] = row.get('COORDINATED', '').strip()
-    repeater['open'] = row.get('OPEN', '').strip()
-    repeater['closed'] = row.get('CLOSED', '').strip()
-    repeater['ctcss_in'] = row.get('CTCSS_IN', '').strip()
-    repeater['ctcss_out'] = row.get('CTCSS_OUT', '').strip()
-    repeater['dcs'] = row.get('DCS', '').strip()
-    repeater['dcs_code'] = row.get('DCS_CODE', '').strip()
+    repeater['coordinated'] = safe_get('COORDINATED')
+    repeater['open'] = safe_get('OPEN')
+    repeater['closed'] = safe_get('CLOSED')
+    repeater['ctcss_in'] = safe_get('CTCSS_IN')
+    repeater['ctcss_out'] = safe_get('CTCSS_OUT')
+    repeater['dcs'] = safe_get('DCS')
+    repeater['dcs_code'] = safe_get('DCS_CODE')
     
     # Features
-    repeater['autopatch'] = row.get('AUTOPATCH', '').strip()
-    repeater['emergency_power'] = row.get('EMERG_POWER', '').strip()
-    repeater['linked'] = row.get('LINKED', '').strip()
-    repeater['link_freq'] = row.get('LINK_FREQ', '').strip()
-    repeater['portable'] = row.get('PORTABLE', '').strip()
-    repeater['wide_area'] = row.get('WIDE_AREA', '').strip()
+    repeater['autopatch'] = safe_get('AUTOPATCH')
+    repeater['emergency_power'] = safe_get('EMERG_POWER')
+    repeater['linked'] = safe_get('LINKED')
+    repeater['link_freq'] = safe_get('LINK_FREQ')
+    repeater['portable'] = safe_get('PORTABLE')
+    repeater['wide_area'] = safe_get('WIDE_AREA')
     
     # Location data
-    repeater['latitude'] = row.get('LATITUDE', '').strip()
-    repeater['longitude'] = row.get('LONGITUDE', '').strip()
-    repeater['latitude_dms'] = row.get('LATITUDE_DDMMSS', '').strip()
-    repeater['longitude_dms'] = row.get('LONGITUDE_DDDMMSS', '').strip()
-    repeater['elevation_feet'] = row.get('AMSL_FEET', '').strip()
+    repeater['latitude'] = safe_get('LATITUDE')
+    repeater['longitude'] = safe_get('LONGITUDE')
+    repeater['latitude_dms'] = safe_get('LATITUDE_DDMMSS')
+    repeater['longitude_dms'] = safe_get('LONGITUDE_DDDMMSS')
+    repeater['elevation_feet'] = safe_get('AMSL_FEET')
     
     # Technical details
-    repeater['tx_power'] = row.get('TX_POWER', '').strip()
-    repeater['antenna_info'] = row.get('ANT_INFO', '').strip()
-    repeater['erp'] = row.get('ERP', '').strip()
+    repeater['tx_power'] = safe_get('TX_POWER')
+    repeater['antenna_info'] = safe_get('ANT_INFO')
+    repeater['erp'] = safe_get('ERP')
     
     # Status and metadata
-    repeater['active'] = row.get('Active', '').strip()
-    repeater['site_name'] = row.get('Site Name', '').strip()
-    repeater['coverage_area'] = row.get('Coverage Area', '').strip()
-    repeater['footnotes'] = row.get('Footnotes', '').strip()
-    repeater['contact_email'] = row.get('Contact Email', '').strip()
-    repeater['repeater_web_page'] = row.get('Repeater Web Page', '').strip()
-    repeater['contact_phone'] = row.get('Contact Phone', '').strip()
-    repeater['update_source'] = row.get('Update Source', '').strip()
-    repeater['coord_notes'] = row.get('Coord. Notes', '').strip()
-    repeater['mailing_address'] = row.get('Mailing Address', '').strip()
+    repeater['active'] = safe_get('Active')
+    repeater['site_name'] = safe_get('Site Name')
+    repeater['coverage_area'] = safe_get('Coverage Area')
+    repeater['footnotes'] = safe_get('Footnotes')
+    repeater['contact_email'] = safe_get('Contact Email')
+    repeater['repeater_web_page'] = safe_get('Repeater Web Page')
+    repeater['contact_phone'] = safe_get('Contact Phone')
+    repeater['update_source'] = safe_get('Update Source')
+    repeater['coord_notes'] = safe_get('Coord. Notes')
+    repeater['mailing_address'] = safe_get('Mailing Address')
     
     # Additional processing
-    repeater['notes'] = row.get('NOTES', '').strip()
-    repeater['update_date'] = row.get('UPDATE', '').strip()
-    repeater['coord_date'] = row.get('CORD_DATE', '').strip()
-    repeater['use_type'] = row.get('USE', '').strip()
+    repeater['notes'] = safe_get('NOTES')
+    repeater['update_date'] = safe_get('UPDATE')
+    repeater['coord_date'] = safe_get('CORD_DATE')
+    repeater['use_type'] = safe_get('USE')
     
     # Parse coordinates to decimal degrees if available
     if repeater['latitude'] and repeater['longitude']:
