@@ -601,6 +601,12 @@
                 map.on('mouseleave', 'unclustered-point', function() {
                     map.getCanvas().style.cursor = '';
                 });
+                
+                // Update map with any existing data
+                if (filteredRepeaters.length > 0) {
+                    addDebug('Map loaded, updating with existing data');
+                    updateMapData();
+                }
             });
             
             mapInitialized = true;
@@ -632,7 +638,17 @@
         }
 
         function updateMapData() {
-            if (!map || !mapInitialized) return;
+            if (!map || !mapInitialized) {
+                addDebug('Map not ready for data update');
+                return;
+            }
+            
+            // Check if the repeaters source exists
+            if (!map.getSource('repeaters')) {
+                addDebug('Repeaters source not ready, waiting...');
+                setTimeout(updateMapData, 500);
+                return;
+            }
             
             const mappableRepeaters = filteredRepeaters.filter(repeater => repeater.lat && repeater.lon);
             
@@ -998,8 +1014,8 @@
                     displayRepeaters();
                     updateStats();
                     
-                    // Update map data if map is visible
-                    if (currentView !== 'table') {
+                    // Update map data if map is visible and initialized
+                    if (currentView !== 'table' && mapInitialized) {
                         updateMapData();
                     }
                     
@@ -1324,7 +1340,9 @@
                 row.insertCell().textContent = repeater.info || '';
             });
             
-            if (currentView !== 'table') updateMapData();
+            if (currentView !== 'table' && mapInitialized) {
+                updateMapData();
+            }
         }
 
         function updateStats() {
