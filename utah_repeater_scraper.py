@@ -157,5 +157,8 @@ def main():
             if 'elevation' in repeater:
                 print(f"   Elevation: {repeater['elevation']}")
 
+# Make functions available for import
+__all__ = ['scrape_repeater_list', 'scrape_repeater_details', 'save_to_csv']
+
 if __name__ == "__main__":
     main()

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utah Repeater Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-group label {
+            font-weight: bold;
+            font-size: 12px;
+            color: #666;
+        }
+        input, select, button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .scrape-btn {
+            background-color: #dc3545;
+        }
+        .scrape-btn:hover:not(:disabled) {
+            background-color: #c82333;
+        }
+        .export-btn {
+            background-color: #28a745;
+        }
+        .export-btn:hover {
+            background-color: #1e7e34;
+        }
+        .file-input {
+            margin-bottom: 15px;
+        }
+        .scrape-section {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .progress-container {
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .progress-text {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .stats {
+            margin: 10px 0;
+            font-weight: bold;
+            color: #666;
+        }
+        .debug {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        th:hover {
+            background-color: #e9ecef;
+        }
+        th.sort-asc::after {
+            content: " ↑";
+        }
+        th.sort-desc::after {
+            content: " ↓";
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e8f4f8;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .frequency {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .callsign {
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .distance {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .last-updated {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Utah Repeater Viewer</h1>
+        
+        <div class="scrape-section">
+            <h3>Data Management</h3>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button id="scrapeBtn" class="scrape-btn" onclick="startScrape()">Scrape New Data</button>
+                <button onclick="loadData()">Load Latest Data</button>
+                <a href="/download/csv" target="_blank">
+                    <button class="export-btn">Download CSV</button>
+                </a>
+                <div class="last-updated" id="lastUpdated"></div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Ready to scrape...</div>
+            </div>
+        </div>
+
+        <div class="file-input">
+            <label for="csvFile"><strong>Or Load External CSV File:</strong></label>
+            <input type="file" id="csvFile" accept=".csv" />
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="zipCode">ZIP Code:</label>
+                <input type="text" id="zipCode" placeholder="84101" />
+            </div>
+            <div class="control-group">
+                <label for="distance">Max Distance (miles):</label>
+                <select id="distance">
+                    <option value="">All</option>
+                    <option value="10">10 miles</option>
+                    <option value="25">25 miles</option>
+                    <option value="50">50 miles</option>
+                    <option value="100">100 miles</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="bandFilter">Band:</label>
+                <select id="bandFilter">
+                    <option value="">All Bands</option>
+                    <option value="6m">6 Meter</option>
+                    <option value="2m">2 Meter</option>
+                    <option value="1.25m">1.25 Meter</option>
+                    <option value="70cm">70 cm</option>
+                    <option value="33cm">33 cm</option>
+                    <option value="23cm">23 cm</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="callFilter">Call Sign:</label>
+                <input type="text" id="callFilter" placeholder="K7DAV" />
+            </div>
+            <button onclick="applyFilters()">Apply Filters</button>
+            <button onclick="clearFilters()">Clear All</button>
+            <button class="export-btn" onclick="exportKML()">Export KML</button>
+            <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+            <button onclick="toggleDebug()">Toggle Debug</button>
+        </div>
+
+        <div class="stats" id="stats">No data loaded</div>
+        <div class="debug" id="debug" style="display: none;"></div>
+        
+        <div class="table-container">
+            <table id="repeaterTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('frequency')">Frequency</th>
+                        <th onclick="sortTable('call')">Call</th>
+                        <th onclick="sortTable('general_location')">Location</th>
+                        <th onclick="sortTable('site_name')">Site</th>
+                        <th onclick="sortTable('sponsor')">Sponsor</th>
+                        <th onclick="sortTable('ctcss')">CTCSS</th>
+                        <th onclick="sortTable('offset')">Offset</th>
+                        <th onclick="sortTable('elevation')">Elevation</th>
+                        <th onclick="sortTable('distance')">Distance</th>
+                        <th onclick="sortTable('info')">Info</th>
+                    </tr>
+                </thead>
+                <tbody id="repeaterTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allRepeaters = [];
+        let filteredRepeaters = [];
+        let currentSort = { column: null, direction: 'asc' };
+        let userLocation = null;
+        let debugInfo = [];
+        let socket = null;
+
+        // Initialize Socket.IO connection
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                addDebug('Connected to server');
+            });
+            
+            socket.on('scrape_progress', function(data) {
+                updateProgress(data);
+            });
+            
+            socket.on('scrape_complete', function(data) {
+                handleScrapeComplete(data);
+            });
+        }
+
+        function addDebug(message) {
+            debugInfo.push(message);
+            console.log(message);
+            const debugEl = document.getElementById('debug');
+            debugEl.innerHTML = debugInfo.join('<br>');
+        }
+
+        function toggleDebug() {
+            const debugEl = document.getElementById('debug');
+            debugEl.style.display = debugEl.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function startScrape() {
+            const scrapeBtn = document.getElementById('scrapeBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            
+            scrapeBtn.disabled = true;
+            scrapeBtn.textContent = 'Scraping...';
+            progressContainer.style.display = 'block';
+            
+            fetch('/api/scrape', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    resetScrapeButton();
+                } else {
+                    addDebug('Scraping started...');
+                }
+            })
+            .catch(error => {
+                showMessage('Error starting scrape: ' + error.message, 'error');
+                resetScrapeButton();
+            });
+        }
+
+        function updateProgress(data) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = data.progress + '%';
+            progressText.textContent = data.message;
+            
+            addDebug(`Progress: ${data.progress}% - ${data.message}`);
+        }
+
+        function handleScrapeComplete(data) {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                // Automatically load the new data
+                setTimeout(() => {
+                    loadData();
+                }, 1000);
+            } else {
+                showMessage('Scraping failed: ' + data.error, 'error');
+            }
+            
+            resetScrapeButton();
+        }
+
+        function resetScrapeButton() {
+            const scrapeBtn = document.getElementById('scrapeBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            
+            scrapeBtn.disabled = false;
+            scrapeBtn.textContent = 'Scrape New Data';
+            progressContainer.style.display = 'none';
+        }
+
+        function loadData() {
+            addDebug('Loading data from server...');
+            
+            fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    allRepeaters = data.repeaters;
+                    filteredRepeaters = [...allRepeaters];
+                    displayRepeaters();
+                    updateStats();
+                    
+                    // Update last updated time
+                    const lastUpdated = document.getElementById('lastUpdated');
+                    const updateTime = new Date(data.last_updated).toLocaleString();
+                    lastUpdated.textContent = `Last updated: ${updateTime}`;
+                    
+                    showMessage(`Loaded ${data.count} repeaters`, 'success');
+                    addDebug(`Loaded ${data.count} repeaters from server`);
+                }
+            })
+            .catch(error => {
+                showMessage('Error loading data: ' + error.message, 'error');
+                addDebug('Error loading data: ' + error.message);
+            });
+        }
+
+        // Load CSV file (existing functionality)
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                debugInfo = []; // Clear debug info
+                addDebug(`Loading file: ${file.name} (${file.size} bytes)`);
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        parseCSV(e.target.result);
+                        showMessage('CSV file loaded successfully!', 'success');
+                    } catch (error) {
+                        addDebug(`Error: ${error.message}`);
+                        showMessage('Error loading CSV file: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function parseCSV(csvText) {
+            addDebug(`CSV text length: ${csvText.length}`);
+            
+            const lines = csvText.split('\n').filter(line => line.trim());
+            addDebug(`Found ${lines.length} lines`);
+            
+            if (lines.length < 2) {
+                throw new Error('CSV file appears to be empty or has no data rows');
+            }
+
+            // More robust CSV parsing
+            const headers = parseCSVLine(lines[0]);
+            addDebug(`Headers (${headers.length}): ${headers.join(', ')}`);
+            
+            allRepeaters = [];
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim()) {
+                    try {
+                        const values = parseCSVLine(lines[i]);
+                        
+                        if (values.length > 0) {
+                            const repeater = {};
+                            headers.forEach((header, index) => {
+                                repeater[header] = (values[index] || '').replace(/^"|"$/g, ''); // Remove quotes
+                            });
+                            
+                            // Parse coordinates if available
+                            if (repeater.coordinates) {
+                                const coordMatch = repeater.coordinates.match(/(\d+\.\d+)°?\s*N.*?(\d+\.\d+)°?\s*W/);
+                                if (coordMatch) {
+                                    repeater.lat = parseFloat(coordMatch[1]);
+                                    repeater.lon = -parseFloat(coordMatch[2]);
+                                }
+                            }
+                            
+                            allRepeaters.push(repeater);
+                            successCount++;
+                        }
+                    } catch (error) {
+                        errorCount++;
+                        addDebug(`Error parsing line ${i}: ${error.message}`);
+                    }
+                }
+            }
+            
+            addDebug(`Successfully parsed ${successCount} repeaters, ${errorCount} errors`);
+            
+            if (allRepeaters.length > 0) {
+                addDebug(`First repeater: ${JSON.stringify(allRepeaters[0])}`);
+            }
+            
+            filteredRepeaters = [...allRepeaters];
+            displayRepeaters();
+            updateStats();
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        // Handle escaped quotes
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function getBand(frequency) {
+            const freq = parseFloat(frequency);
+            if (freq >= 50 && freq < 54) return '6m';
+            if (freq >= 144 && freq < 148) return '2m';
+            if (freq >= 222 && freq < 225) return '1.25m';
+            if (freq >= 420 && freq < 450) return '70cm';
+            if (freq >= 902 && freq < 928) return '33cm';
+            if (freq >= 1240 && freq < 1300) return '23cm';
+            return 'other';
+        }
+
+        async function getLocationFromZip(zipCode) {
+            try {
+                // Using a free geocoding service
+                const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return {
+                        lat: parseFloat(data.places[0].latitude),
+                        lon: parseFloat(data.places[0].longitude)
+                    };
+                }
+            } catch (error) {
+                console.error('Error geocoding ZIP code:', error);
+            }
+            return null;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        async function applyFilters() {
+            const zipCode = document.getElementById('zipCode').value.trim();
+            const maxDistance = document.getElementById('distance').value;
+            const bandFilter = document.getElementById('bandFilter').value;
+            const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
+
+            // Get user location if ZIP code provided
+            if (zipCode && zipCode !== '') {
+                userLocation = await getLocationFromZip(zipCode);
+                if (!userLocation) {
+                    showMessage('Could not find location for ZIP code: ' + zipCode, 'error');
+                    return;
+                }
+            }
+
+            filteredRepeaters = allRepeaters.filter(repeater => {
+                // Band filter
+                if (bandFilter && getBand(repeater.frequency) !== bandFilter) {
+                    return false;
+                }
+
+                // Call sign filter
+                if (callFilter && !repeater.call.toLowerCase().includes(callFilter)) {
+                    return false;
+                }
+
+                // Distance filter
+                if (maxDistance && userLocation && repeater.lat && repeater.lon) {
+                    const distance = calculateDistance(userLocation.lat, userLocation.lon, repeater.lat, repeater.lon);
+                    repeater.distance = distance.toFixed(1);
+                    if (distance > parseFloat(maxDistance)) {
+                        return false;
+                    }
+                } else if (userLocation && repeater.lat && repeater.lon) {
+                    const distance = calculateDistance(userLocation.lat, userLocation.lon, repeater.lat, repeater.lon);
+                    repeater.distance = distance.toFixed(1);
+                }
+
+                return true;
+            });
+
+            displayRepeaters();
+            updateStats();
+        }
+
+        function clearFilters() {
+            document.getElementById('zipCode').value = '';
+            document.getElementById('distance').value = '';
+            document.getElementById('bandFilter').value = '';
+            document.getElementById('callFilter').value = '';
+            userLocation = null;
+            
+            // Clear distances
+            allRepeaters.forEach(repeater => {
+                delete repeater.distance;
+            });
+            
+            filteredRepeaters = [...allRepeaters];
+            displayRepeaters();
+            updateStats();
+        }
+
+        function sortTable(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+
+            filteredRepeaters.sort((a, b) => {
+                let aVal = a[column] || '';
+                let bVal = b[column] || '';
+
+                // Handle numeric columns
+                if (column === 'frequency' || column === 'elevation' || column === 'distance') {
+                    aVal = parseFloat(aVal) || 0;
+                    bVal = parseFloat(bVal) || 0;
+                } else {
+                    aVal = aVal.toString().toLowerCase();
+                    bVal = bVal.toString().toLowerCase();
+                }
+
+                if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            displayRepeaters();
+            updateSortHeaders();
+        }
+
+        function updateSortHeaders() {
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+            
+            if (currentSort.column) {
+                const th = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
+                if (th) {
+                    th.classList.add(`sort-${currentSort.direction}`);
+                }
+            }
+        }
+
+        function displayRepeaters() {
+            const tbody = document.getElementById('repeaterTableBody');
+            tbody.innerHTML = '';
+
+            addDebug(`Displaying ${filteredRepeaters.length} repeaters`);
+
+            filteredRepeaters.forEach((repeater, index) => {
+                const row = tbody.insertRow();
+                
+                const freqCell = row.insertCell();
+                freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
+                
+                const callCell = row.insertCell();
+                callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
+                
+                row.insertCell().textContent = repeater.general_location || '';
+                row.insertCell().textContent = repeater.site_name || '';
+                row.insertCell().textContent = repeater.sponsor || '';
+                row.insertCell().textContent = repeater.ctcss || '';
+                row.insertCell().textContent = repeater.offset || '';
+                row.insertCell().textContent = repeater.elevation || '';
+                
+                const distanceCell = row.insertCell();
+                if (repeater.distance) {
+                    distanceCell.innerHTML = `<span class="distance">${repeater.distance} mi</span>`;
+                } else {
+                    distanceCell.textContent = '';
+                }
+                
+                row.insertCell().textContent = repeater.info || '';
+            });
+        }
+
+        function updateStats() {
+            const total = allRepeaters.length;
+            const filtered = filteredRepeaters.length;
+            const statsEl = document.getElementById('stats');
+            
+            if (total === 0) {
+                statsEl.textContent = 'No data loaded';
+            } else if (filtered === total) {
+                statsEl.textContent = `Showing all ${total} repeaters`;
+            } else {
+                statsEl.textContent = `Showing ${filtered} of ${total} repeaters`;
+            }
+        }
+
+        function exportKML() {
+            if (filteredRepeaters.length === 0) {
+                showMessage('No repeaters to export', 'error');
+                return;
+            }
+
+            const kml = generateKML(filteredRepeaters);
+            const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'utah_repeaters.kml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage(`Exported ${filteredRepeaters.length} repeaters to KML`, 'success');
+        }
+
+        function exportCSV() {
+            if (filteredRepeaters.length === 0) {
+                showMessage('No repeaters to export', 'error');
+                return;
+            }
+
+            const csv = generateCSV(filteredRepeaters);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'utah_repeaters_filtered.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage(`Exported ${filteredRepeaters.length} repeaters to CSV`, 'success');
+        }
+
+        function generateCSV(repeaters) {
+            if (repeaters.length === 0) return '';
+            
+            // Get all unique field names from all repeaters
+            const allFields = new Set();
+            repeaters.forEach(repeater => {
+                Object.keys(repeater).forEach(key => {
+                    // Skip internal fields we added for processing
+                    if (key !== 'lat' && key !== 'lon') {
+                        allFields.add(key);
+                    }
+                });
+            });
+            
+            const fieldNames = Array.from(allFields).sort();
+            
+            // Create CSV header
+            let csv = fieldNames.map(field => `"${field}"`).join(',') + '\n';
+            
+            // Add data rows
+            repeaters.forEach(repeater => {
+                const row = fieldNames.map(field => {
+                    const value = repeater[field] || '';
+                    // Escape quotes and wrap in quotes
+                    return `"${value.toString().replace(/"/g, '""')}"`;
+                });
+                csv += row.join(',') + '\n';
+            });
+            
+            return csv;
+        }
+
+        function generateKML(repeaters) {
+            let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+    <name>Utah Repeaters</name>
+    <description>Utah VHF Society Repeater List</description>
+    
+    <Style id="repeaterIcon">
+        <IconStyle>
+            <Icon>
+                <href>http://maps.google.com/mapfiles/kml/shapes/electronics.png</href>
+            </Icon>
+        </IconStyle>
+    </Style>
+`;
+
+            repeaters.forEach(repeater => {
+                if (repeater.lat && repeater.lon) {
+                    const name = `${repeater.call} - ${repeater.frequency}`;
+                    const description = `
+<![CDATA[
+<b>Call Sign:</b> ${repeater.call}<br/>
+<b>Frequency:</b> ${repeater.frequency} MHz<br/>
+<b>Offset:</b> ${repeater.offset}<br/>
+<b>CTCSS:</b> ${repeater.ctcss}<br/>
+<b>Location:</b> ${repeater.general_location}<br/>
+<b>Site:</b> ${repeater.site_name}<br/>
+<b>Sponsor:</b> ${repeater.sponsor}<br/>
+<b>Elevation:</b> ${repeater.elevation}<br/>
+<b>Info:</b> ${repeater.info}<br/>
+${repeater.links ? `<b>Links:</b> ${repeater.links}<br/>` : ''}
+${repeater.distance ? `<b>Distance:</b> ${repeater.distance} miles<br/>` : ''}
+]]>
+                    `;
+
+                    kml += `
+    <Placemark>
+        <name>${escapeXML(name)}</name>
+        <description>${description}</description>
+        <styleUrl>#repeaterIcon</styleUrl>
+        <Point>
+            <coordinates>${repeater.lon},${repeater.lat},0</coordinates>
+        </Point>
+    </Placemark>`;
+                }
+            });
+
+            kml += `
+</Document>
+</kml>`;
+
+            return kml;
+        }
+
+        function escapeXML(str) {
+            return str.replace(/[<>&'"]/g, function (c) {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                }
+            });
+        }
+
+        function showMessage(message, type) {
+            const existingMessage = document.querySelector('.error, .success');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(messageDiv, container.children[1]);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initSocket();
+            // Try to load existing data on page load
+            loadData();
+        });
+    </script>
+</body>
+</html>
