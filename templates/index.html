@@ -283,10 +283,6 @@
             </div>
         </div>
 
-        <div class="file-input">
-            <label for="csvFile"><strong>Or Load External CSV File:</strong></label>
-            <input type="file" id="csvFile" accept=".csv" />
-        </div>
 
         <div class="controls">
             <div class="control-group">
@@ -1008,117 +1004,6 @@
             });
         }
 
-        // Load CSV file (existing functionality)
-        document.getElementById('csvFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                debugInfo = []; // Clear debug info
-                addDebug(`Loading file: ${file.name} (${file.size} bytes)`);
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        parseCSV(e.target.result);
-                        showMessage('CSV file loaded successfully!', 'success');
-                    } catch (error) {
-                        addDebug(`Error: ${error.message}`);
-                        showMessage('Error loading CSV file: ' + error.message, 'error');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        });
-
-        function parseCSV(csvText) {
-            addDebug(`CSV text length: ${csvText.length}`);
-            
-            const lines = csvText.split('\n').filter(line => line.trim());
-            addDebug(`Found ${lines.length} lines`);
-            
-            if (lines.length < 2) {
-                throw new Error('CSV file appears to be empty or has no data rows');
-            }
-
-            // More robust CSV parsing
-            const headers = parseCSVLine(lines[0]);
-            addDebug(`Headers (${headers.length}): ${headers.join(', ')}`);
-            
-            allRepeaters = [];
-            let successCount = 0;
-            let errorCount = 0;
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    try {
-                        const values = parseCSVLine(lines[i]);
-                        
-                        if (values.length > 0) {
-                            const repeater = {};
-                            headers.forEach((header, index) => {
-                                repeater[header] = (values[index] || '').replace(/^"|"$/g, ''); // Remove quotes
-                            });
-                            
-                            // Parse coordinates if available
-                            if (repeater.coordinates) {
-                                const coordMatch = repeater.coordinates.match(/(\d+\.\d+)°?\s*N.*?(\d+\.\d+)°?\s*W/);
-                                if (coordMatch) {
-                                    repeater.lat = parseFloat(coordMatch[1]);
-                                    repeater.lon = -parseFloat(coordMatch[2]);
-                                }
-                            }
-                            
-                            allRepeaters.push(repeater);
-                            successCount++;
-                        }
-                    } catch (error) {
-                        errorCount++;
-                        addDebug(`Error parsing line ${i}: ${error.message}`);
-                    }
-                }
-            }
-            
-            addDebug(`Successfully parsed ${successCount} repeaters, ${errorCount} errors`);
-            
-            if (allRepeaters.length > 0) {
-                addDebug(`First repeater: ${JSON.stringify(allRepeaters[0])}`);
-            }
-            
-            filteredRepeaters = [...allRepeaters];
-            displayRepeaters();
-            updateStats();
-            
-            // Show center on user button if we have user location
-            if (userLocation) {
-                document.getElementById('centerUserBtn').style.display = 'inline-block';
-            }
-            updateMapData();
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    if (inQuotes && line[i + 1] === '"') {
-                        // Handle escaped quotes
-                        current += '"';
-                        i++; // Skip next quote
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(current.trim());
-            return result;
-        }
 
         function getBand(frequency) {
             const freq = parseFloat(frequency);
