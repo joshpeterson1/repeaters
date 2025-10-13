@@ -851,7 +851,13 @@
                     fitMapToRepeaters();
                 }, 1000);
             } else {
-                updateMapData();
+                // Resize map first, then update data
+                setTimeout(() => {
+                    if (map) {
+                        map.resize();
+                        updateMapData();
+                    }
+                }, 100);
             }
             
             document.getElementById('tableViewBtn').classList.remove('active');
@@ -859,11 +865,6 @@
             document.getElementById('bothViewBtn').classList.remove('active');
             
             clearRepeaterSelection();
-            
-            // Resize map after showing
-            setTimeout(() => {
-                if (map) map.resize();
-            }, 100);
         }
 
         function showBothViews() {
@@ -878,17 +879,18 @@
                     fitMapToRepeaters();
                 }, 1000);
             } else {
-                updateMapData();
+                // Resize map first, then update data
+                setTimeout(() => {
+                    if (map) {
+                        map.resize();
+                        updateMapData();
+                    }
+                }, 100);
             }
             
             document.getElementById('tableViewBtn').classList.remove('active');
             document.getElementById('mapViewBtn').classList.remove('active');
             document.getElementById('bothViewBtn').classList.add('active');
-            
-            // Resize map after showing
-            setTimeout(() => {
-                if (map) map.resize();
-            }, 100);
         }
 
         // Initialize Socket.IO connection
@@ -995,6 +997,11 @@
                     filteredRepeaters = [...allRepeaters];
                     displayRepeaters();
                     updateStats();
+                    
+                    // Update map data if map is visible
+                    if (currentView !== 'table') {
+                        updateMapData();
+                    }
                     
                     // Update last updated time
                     const lastUpdated = document.getElementById('lastUpdated');
