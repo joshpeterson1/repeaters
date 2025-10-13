@@ -666,10 +666,10 @@
                         'line-color': ['get', 'linkColor'], // Use the color from properties
                         'line-width': [
                             'case',
-                            ['==', ['get', 'linkType'], 'intertie'], 4, // Thicker for intertie
-                            3 // Normal for regular links
+                            ['==', ['get', 'linkType'], 'intertie'], 2, // Thinner for intertie
+                            1.5 // Thinner for regular links
                         ],
-                        'line-opacity': 0.9,
+                        'line-opacity': 0.5,
                         'line-dasharray': [
                             'case',
                             ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
