@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utah Repeater Viewer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -187,6 +189,54 @@
             color: #666;
             font-style: italic;
         }
+        .map-container {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+        .mapboxgl-popup-content {
+            max-width: 300px;
+        }
+        .popup-content {
+            font-size: 12px;
+        }
+        .popup-content h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .popup-content .frequency {
+            font-weight: bold;
+            color: #dc3545;
+            font-size: 14px;
+        }
+        .view-toggle {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .view-toggle button {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .view-toggle button.active {
+            background-color: #28a745;
+        }
+        .map-controls {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -258,6 +308,22 @@
         <div class="stats" id="stats">No data loaded</div>
         <div class="debug" id="debug" style="display: none;"></div>
         
+        <div class="view-toggle">
+            <strong>View:</strong>
+            <button id="tableViewBtn" class="active" onclick="showTableView()">Table</button>
+            <button id="mapViewBtn" onclick="showMapView()">Map</button>
+            <button id="bothViewBtn" onclick="showBothViews()">Both</button>
+        </div>
+
+        <div class="map-container" id="mapContainer" style="display: none;">
+            <div class="map-controls">
+                <button onclick="fitMapToRepeaters()">Fit to All Repeaters</button>
+                <button onclick="centerMapOnUser()" id="centerUserBtn" style="display: none;">Center on My Location</button>
+                <span id="mapStats"></span>
+            </div>
+            <div id="map"></div>
+        </div>
+        
         <div class="table-container">
             <table id="repeaterTable">
                 <thead>
@@ -287,6 +353,305 @@
         let userLocation = null;
         let debugInfo = [];
         let socket = null;
+        let map = null;
+        let mapInitialized = false;
+        let currentView = 'table'; // 'table', 'map', 'both'
+        const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJycHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
+
+        // Initialize Mapbox map
+        function initializeMap() {
+            if (mapInitialized) return;
+            
+            mapboxgl.accessToken = MAPBOX_TOKEN;
+            
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/outdoors-v12', // Good for radio coverage
+                center: [-111.8910, 40.7608], // Salt Lake City center
+                zoom: 8
+            });
+            
+            map.on('load', function() {
+                // Add source for repeaters
+                map.addSource('repeaters', {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: []
+                    },
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50
+                });
+                
+                // Add cluster circles
+                map.addLayer({
+                    id: 'clusters',
+                    type: 'circle',
+                    source: 'repeaters',
+                    filter: ['has', 'point_count'],
+                    paint: {
+                        'circle-color': [
+                            'step',
+                            ['get', 'point_count'],
+                            '#51bbd6',
+                            10,
+                            '#f1f075',
+                            30,
+                            '#f28cb1'
+                        ],
+                        'circle-radius': [
+                            'step',
+                            ['get', 'point_count'],
+                            20,
+                            10,
+                            30,
+                            30,
+                            40
+                        ]
+                    }
+                });
+                
+                // Add cluster count labels
+                map.addLayer({
+                    id: 'cluster-count',
+                    type: 'symbol',
+                    source: 'repeaters',
+                    filter: ['has', 'point_count'],
+                    layout: {
+                        'text-field': '{point_count_abbreviated}',
+                        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                        'text-size': 12
+                    }
+                });
+                
+                // Add individual repeater points
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'circle',
+                    source: 'repeaters',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-color': [
+                            'case',
+                            ['==', ['get', 'band'], '2m'], '#dc3545',
+                            ['==', ['get', 'band'], '70cm'], '#007bff',
+                            ['==', ['get', 'band'], '6m'], '#28a745',
+                            ['==', ['get', 'band'], '1.25m'], '#ffc107',
+                            '#6c757d'
+                        ],
+                        'circle-radius': 8,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+                
+                // Click events for clusters
+                map.on('click', 'clusters', function(e) {
+                    const features = map.queryRenderedFeatures(e.point, {
+                        layers: ['clusters']
+                    });
+                    const clusterId = features[0].properties.cluster_id;
+                    map.getSource('repeaters').getClusterExpansionZoom(
+                        clusterId,
+                        function(err, zoom) {
+                            if (err) return;
+                            map.easeTo({
+                                center: features[0].geometry.coordinates,
+                                zoom: zoom
+                            });
+                        }
+                    );
+                });
+                
+                // Click events for individual points
+                map.on('click', 'unclustered-point', function(e) {
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const props = e.features[0].properties;
+                    
+                    // Parse the properties back from JSON
+                    const repeater = JSON.parse(props.data);
+                    
+                    const popupContent = createPopupContent(repeater);
+                    
+                    new mapboxgl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(popupContent)
+                        .addTo(map);
+                });
+                
+                // Change cursor on hover
+                map.on('mouseenter', 'clusters', function() {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+                map.on('mouseleave', 'clusters', function() {
+                    map.getCanvas().style.cursor = '';
+                });
+                map.on('mouseenter', 'unclustered-point', function() {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+                map.on('mouseleave', 'unclustered-point', function() {
+                    map.getCanvas().style.cursor = '';
+                });
+            });
+            
+            mapInitialized = true;
+        }
+
+        function createPopupContent(repeater) {
+            return `
+                <div class="popup-content">
+                    <h4>${repeater.call || 'N/A'}</h4>
+                    <div class="frequency">${repeater.frequency || 'N/A'} MHz</div>
+                    <p><strong>Location:</strong> ${repeater.location || repeater.general_location || 'N/A'}</p>
+                    <p><strong>Site:</strong> ${repeater.site_name || 'N/A'}</p>
+                    <p><strong>Sponsor:</strong> ${repeater.sponsor || 'N/A'}</p>
+                    <p><strong>CTCSS:</strong> ${repeater.ctcss || 'N/A'}</p>
+                    <p><strong>Offset:</strong> ${repeater.offset || 'N/A'}</p>
+                    ${repeater.elevation ? `<p><strong>Elevation:</strong> ${repeater.elevation}</p>` : ''}
+                    ${repeater.distance ? `<p><strong>Distance:</strong> ${repeater.distance} miles</p>` : ''}
+                    ${repeater.info ? `<p><strong>Info:</strong> ${repeater.info}</p>` : ''}
+                </div>
+            `;
+        }
+
+        function updateMapData() {
+            if (!map || !mapInitialized) return;
+            
+            const features = filteredRepeaters
+                .filter(repeater => repeater.lat && repeater.lon)
+                .map(repeater => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [repeater.lon, repeater.lat]
+                    },
+                    properties: {
+                        band: getBand(repeater.frequency),
+                        data: JSON.stringify(repeater) // Store full data for popup
+                    }
+                }));
+            
+            map.getSource('repeaters').setData({
+                type: 'FeatureCollection',
+                features: features
+            });
+            
+            // Update map stats
+            const mapStats = document.getElementById('mapStats');
+            const mappableCount = features.length;
+            const totalCount = filteredRepeaters.length;
+            mapStats.textContent = `Showing ${mappableCount} of ${totalCount} repeaters on map`;
+            
+            addDebug(`Updated map with ${mappableCount} repeaters`);
+        }
+
+        function fitMapToRepeaters() {
+            if (!map || !mapInitialized) return;
+            
+            const mappableRepeaters = filteredRepeaters.filter(r => r.lat && r.lon);
+            if (mappableRepeaters.length === 0) return;
+            
+            const bounds = new mapboxgl.LngLatBounds();
+            mappableRepeaters.forEach(repeater => {
+                bounds.extend([repeater.lon, repeater.lat]);
+            });
+            
+            map.fitBounds(bounds, { padding: 50 });
+        }
+
+        function centerMapOnUser() {
+            if (!map || !userLocation) return;
+            
+            map.flyTo({
+                center: [userLocation.lon, userLocation.lat],
+                zoom: 10
+            });
+            
+            // Add user location marker if it doesn't exist
+            if (!map.getSource('user-location')) {
+                map.addSource('user-location', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Point',
+                        coordinates: [userLocation.lon, userLocation.lat]
+                    }
+                });
+                
+                map.addLayer({
+                    id: 'user-location',
+                    type: 'circle',
+                    source: 'user-location',
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#ff0000',
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+            }
+        }
+
+        function showTableView() {
+            currentView = 'table';
+            document.getElementById('mapContainer').style.display = 'none';
+            document.getElementById('repeaterTable').parentElement.style.display = 'block';
+            
+            document.getElementById('tableViewBtn').classList.add('active');
+            document.getElementById('mapViewBtn').classList.remove('active');
+            document.getElementById('bothViewBtn').classList.remove('active');
+        }
+
+        function showMapView() {
+            currentView = 'map';
+            document.getElementById('mapContainer').style.display = 'block';
+            document.getElementById('repeaterTable').parentElement.style.display = 'none';
+            
+            if (!mapInitialized) {
+                initializeMap();
+                // Wait a bit for map to initialize, then update data
+                setTimeout(() => {
+                    updateMapData();
+                    fitMapToRepeaters();
+                }, 1000);
+            } else {
+                updateMapData();
+            }
+            
+            document.getElementById('tableViewBtn').classList.remove('active');
+            document.getElementById('mapViewBtn').classList.add('active');
+            document.getElementById('bothViewBtn').classList.remove('active');
+            
+            // Resize map after showing
+            setTimeout(() => {
+                if (map) map.resize();
+            }, 100);
+        }
+
+        function showBothViews() {
+            currentView = 'both';
+            document.getElementById('mapContainer').style.display = 'block';
+            document.getElementById('repeaterTable').parentElement.style.display = 'block';
+            
+            if (!mapInitialized) {
+                initializeMap();
+                setTimeout(() => {
+                    updateMapData();
+                    fitMapToRepeaters();
+                }, 1000);
+            } else {
+                updateMapData();
+            }
+            
+            document.getElementById('tableViewBtn').classList.remove('active');
+            document.getElementById('mapViewBtn').classList.remove('active');
+            document.getElementById('bothViewBtn').classList.add('active');
+            
+            // Resize map after showing
+            setTimeout(() => {
+                if (map) map.resize();
+            }, 100);
+        }
 
         // Initialize Socket.IO connection
         function initSocket() {
@@ -486,6 +851,12 @@
             filteredRepeaters = [...allRepeaters];
             displayRepeaters();
             updateStats();
+            
+            // Show center on user button if we have user location
+            if (userLocation) {
+                document.getElementById('centerUserBtn').style.display = 'inline-block';
+            }
+            updateMapData();
         }
 
         function parseCSVLine(line) {
@@ -613,6 +984,9 @@
             filteredRepeaters = [...allRepeaters];
             displayRepeaters();
             updateStats();
+            
+            document.getElementById('centerUserBtn').style.display = 'none';
+            updateMapData();
         }
 
         function sortTable(column) {
@@ -689,6 +1063,8 @@
                 
                 row.insertCell().textContent = repeater.info || '';
             });
+            
+            if (currentView !== 'table') updateMapData();
         }
 
         function updateStats() {
