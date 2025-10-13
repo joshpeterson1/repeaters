@@ -158,4 +158,5 @@ def handle_connect():
     emit('connected', {'message': 'Connected to server'})
 
 if __name__ == '__main__':
+    # This is only for local development
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
