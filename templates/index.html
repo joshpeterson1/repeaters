@@ -946,8 +946,8 @@
         function clearRepeaterSelection() {
             selectedRepeater = null;
             
-            // Clear highlighted repeater
-            if (map && mapInitialized) {
+            // Clear highlighted repeater - but only if map is initialized and source exists
+            if (map && mapInitialized && map.getSource('highlighted-repeater')) {
                 map.getSource('highlighted-repeater').setData({
                     type: 'FeatureCollection',
                     features: []
