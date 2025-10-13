@@ -301,8 +301,7 @@
             </div>
             <div class="control-group">
                 <label for="bandFilter">Band:</label>
-                <select id="bandFilter">
-                    <option value="">All Bands</option>
+                <select id="bandFilter" multiple size="7">
                     <option value="6m">6 Meter</option>
                     <option value="2m">2 Meter</option>
                     <option value="1.25m">1.25 Meter</option>
@@ -549,6 +548,8 @@
                 
                 // Click events for clusters
                 map.on('click', 'clusters', function(e) {
+                    e.originalEvent.stopPropagation(); // Prevent map click event
+                    
                     const features = map.queryRenderedFeatures(e.point, {
                         layers: ['clusters']
                     });
@@ -567,6 +568,8 @@
                 
                 // Click events for individual points
                 map.on('click', 'unclustered-point', function(e) {
+                    e.originalEvent.stopPropagation(); // Prevent map click event
+                    
                     const coordinates = e.features[0].geometry.coordinates.slice();
                     const props = e.features[0].properties;
                     
@@ -582,6 +585,18 @@
                         .setLngLat(coordinates)
                         .setHTML(popupContent)
                         .addTo(map);
+                });
+                
+                // Click on map to deselect repeater
+                map.on('click', function(e) {
+                    // Only deselect if we didn't click on a marker or cluster
+                    const features = map.queryRenderedFeatures(e.point, {
+                        layers: ['unclustered-point', 'clusters']
+                    });
+                    
+                    if (features.length === 0) {
+                        clearRepeaterSelection();
+                    }
                 });
                 
                 // Change cursor on hover
@@ -1047,7 +1062,8 @@
         async function applyFilters() {
             const zipCode = document.getElementById('zipCode').value.trim();
             const maxDistance = document.getElementById('distance').value;
-            const bandFilter = document.getElementById('bandFilter').value;
+            const bandFilterSelect = document.getElementById('bandFilter');
+            const selectedBands = Array.from(bandFilterSelect.selectedOptions).map(option => option.value);
             const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
             const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
 
@@ -1061,8 +1077,8 @@
             }
 
             filteredRepeaters = allRepeaters.filter(repeater => {
-                // Band filter
-                if (bandFilter && getBand(repeater.frequency) !== bandFilter) {
+                // Band filter - check if any selected bands match
+                if (selectedBands.length > 0 && !selectedBands.includes(getBand(repeater.frequency))) {
                     return false;
                 }
 
@@ -1101,7 +1117,9 @@
         function clearFilters() {
             document.getElementById('zipCode').value = '';
             document.getElementById('distance').value = '';
-            document.getElementById('bandFilter').value = '';
+            // Clear all selected options in the multiple select
+            const bandFilter = document.getElementById('bandFilter');
+            Array.from(bandFilter.options).forEach(option => option.selected = false);
             document.getElementById('callFilter').value = '';
             document.getElementById('wideCoverageFilter').checked = false;
             userLocation = null;
