@@ -397,10 +397,57 @@
                 container: 'map',
                 style: 'mapbox://styles/mapbox/outdoors-v12', // Good for radio coverage
                 center: [-111.8910, 40.7608], // Salt Lake City center
-                zoom: 8
+                zoom: 8,
+                // Restrict panning to Utah bounds
+                maxBounds: [
+                    [-114.052962, 36.997968], // Southwest corner of Utah
+                    [-109.041058, 42.001567]  // Northeast corner of Utah
+                ]
             });
             
             map.on('load', function() {
+                // Add Utah boundary visualization
+                map.addSource('utah-boundary', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [[
+                                [-114.052962, 42.001567], // NW corner
+                                [-109.041058, 42.001567], // NE corner
+                                [-109.041058, 36.997968], // SE corner
+                                [-114.052962, 36.997968], // SW corner
+                                [-114.052962, 42.001567]  // Close polygon
+                            ]]
+                        }
+                    }
+                });
+                
+                // Add subtle boundary fill
+                map.addLayer({
+                    id: 'utah-boundary-fill',
+                    type: 'fill',
+                    source: 'utah-boundary',
+                    paint: {
+                        'fill-color': '#007bff',
+                        'fill-opacity': 0.05
+                    }
+                });
+                
+                // Add boundary line
+                map.addLayer({
+                    id: 'utah-boundary-line',
+                    type: 'line',
+                    source: 'utah-boundary',
+                    paint: {
+                        'line-color': '#dc3545',
+                        'line-width': 2,
+                        'line-opacity': 0.6,
+                        'line-dasharray': [2, 2] // Dashed line
+                    }
+                });
+                
                 // Add source for repeaters
                 map.addSource('repeaters', {
                     type: 'geojson',
