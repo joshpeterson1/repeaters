@@ -455,9 +455,21 @@
                             ['==', ['get', 'band'], '1.25m'], '#ffc107',
                             '#6c757d'
                         ],
-                        'circle-radius': 8,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fff'
+                        'circle-radius': [
+                            'case',
+                            ['>', ['get', 'count'], 1], 10, // Larger for multiple repeaters
+                            8 // Normal size for single repeaters
+                        ],
+                        'circle-stroke-width': [
+                            'case',
+                            ['>', ['get', 'count'], 1], 3, // Thicker stroke for multiple
+                            2 // Normal stroke
+                        ],
+                        'circle-stroke-color': [
+                            'case',
+                            ['>', ['get', 'count'], 1], '#ff6b35', // Orange stroke for multiple
+                            '#fff' // White stroke for single
+                        ]
                     }
                 });
                 
@@ -486,8 +498,11 @@
                     
                     // Parse the properties back from JSON
                     const repeater = JSON.parse(props.data);
+                    const count = props.count || 1;
+                    const groupIndex = props.groupIndex || 0;
                     
-                    const popupContent = createPopupContent(repeater);
+                    const isMultiple = count > 1;
+                    const popupContent = createPopupContent(repeater, isMultiple, groupIndex, count);
                     
                     new mapboxgl.Popup()
                         .setLngLat(coordinates)
@@ -513,39 +528,91 @@
             mapInitialized = true;
         }
 
-        function createPopupContent(repeater) {
-            return `
-                <div class="popup-content">
-                    <h4>${repeater.call || 'N/A'}</h4>
-                    <div class="frequency">${repeater.frequency || 'N/A'} MHz</div>
-                    <p><strong>Location:</strong> ${repeater.location || repeater.general_location || 'N/A'}</p>
-                    <p><strong>Site:</strong> ${repeater.site_name || 'N/A'}</p>
-                    <p><strong>Sponsor:</strong> ${repeater.sponsor || 'N/A'}</p>
-                    <p><strong>CTCSS:</strong> ${repeater.ctcss || 'N/A'}</p>
-                    <p><strong>Offset:</strong> ${repeater.offset || 'N/A'}</p>
-                    ${repeater.elevation ? `<p><strong>Elevation:</strong> ${repeater.elevation}</p>` : ''}
-                    ${repeater.distance ? `<p><strong>Distance:</strong> ${repeater.distance} miles</p>` : ''}
-                    ${repeater.info ? `<p><strong>Info:</strong> ${repeater.info}</p>` : ''}
-                </div>
-            `;
+        function createPopupContent(repeater, isMultiple = false, groupIndex = 0, totalInGroup = 1) {
+            let content = `<div class="popup-content">`;
+            
+            if (isMultiple) {
+                content += `<div style="background-color: #e9ecef; padding: 5px; margin-bottom: 10px; border-radius: 3px; font-size: 11px;">
+                    <strong>Multiple repeaters at this location (${groupIndex + 1} of ${totalInGroup})</strong>
+                </div>`;
+            }
+            
+            content += `
+                <h4>${repeater.call || 'N/A'}</h4>
+                <div class="frequency">${repeater.frequency || 'N/A'} MHz</div>
+                <p><strong>Location:</strong> ${repeater.location || repeater.general_location || 'N/A'}</p>
+                <p><strong>Site:</strong> ${repeater.site_name || 'N/A'}</p>
+                <p><strong>Sponsor:</strong> ${repeater.sponsor || 'N/A'}</p>
+                <p><strong>CTCSS:</strong> ${repeater.ctcss || 'N/A'}</p>
+                <p><strong>Offset:</strong> ${repeater.offset || 'N/A'}</p>
+                ${repeater.elevation ? `<p><strong>Elevation:</strong> ${repeater.elevation}</p>` : ''}
+                ${repeater.distance ? `<p><strong>Distance:</strong> ${repeater.distance} miles</p>` : ''}
+                ${repeater.info ? `<p><strong>Info:</strong> ${repeater.info}</p>` : ''}
+            </div>`;
+            
+            return content;
         }
 
         function updateMapData() {
             if (!map || !mapInitialized) return;
             
-            const features = filteredRepeaters
-                .filter(repeater => repeater.lat && repeater.lon)
-                .map(repeater => ({
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [repeater.lon, repeater.lat]
-                    },
-                    properties: {
-                        band: getBand(repeater.frequency),
-                        data: JSON.stringify(repeater) // Store full data for popup
-                    }
-                }));
+            const mappableRepeaters = filteredRepeaters.filter(repeater => repeater.lat && repeater.lon);
+            
+            // Group repeaters by location to handle overlapping points
+            const locationGroups = {};
+            mappableRepeaters.forEach(repeater => {
+                const key = `${repeater.lat.toFixed(6)},${repeater.lon.toFixed(6)}`;
+                if (!locationGroups[key]) {
+                    locationGroups[key] = [];
+                }
+                locationGroups[key].push(repeater);
+            });
+            
+            const features = [];
+            Object.entries(locationGroups).forEach(([locationKey, repeaters]) => {
+                const [lat, lon] = locationKey.split(',').map(parseFloat);
+                
+                if (repeaters.length === 1) {
+                    // Single repeater at this location
+                    features.push({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [lon, lat]
+                        },
+                        properties: {
+                            band: getBand(repeaters[0].frequency),
+                            data: JSON.stringify(repeaters[0]),
+                            count: 1
+                        }
+                    });
+                } else {
+                    // Multiple repeaters at same location - create slightly offset points
+                    repeaters.forEach((repeater, index) => {
+                        // Create small offset in a circle pattern
+                        const offsetDistance = 0.0001; // Very small offset
+                        const angle = (index / repeaters.length) * 2 * Math.PI;
+                        const offsetLat = lat + (offsetDistance * Math.cos(angle));
+                        const offsetLon = lon + (offsetDistance * Math.sin(angle));
+                        
+                        features.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [offsetLon, offsetLat]
+                            },
+                            properties: {
+                                band: getBand(repeater.frequency),
+                                data: JSON.stringify(repeater),
+                                count: repeaters.length,
+                                originalLat: lat,
+                                originalLon: lon,
+                                groupIndex: index
+                            }
+                        });
+                    });
+                }
+            });
             
             map.getSource('repeaters').setData({
                 type: 'FeatureCollection',
@@ -554,11 +621,12 @@
             
             // Update map stats
             const mapStats = document.getElementById('mapStats');
-            const mappableCount = features.length;
+            const mappableCount = mappableRepeaters.length;
             const totalCount = filteredRepeaters.length;
-            mapStats.textContent = `Showing ${mappableCount} of ${totalCount} repeaters on map`;
+            const locationCount = Object.keys(locationGroups).length;
+            mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations on map`;
             
-            addDebug(`Updated map with ${mappableCount} repeaters`);
+            addDebug(`Updated map with ${mappableCount} repeaters at ${locationCount} locations`);
         }
 
         function fitMapToRepeaters() {
