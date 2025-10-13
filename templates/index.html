@@ -374,6 +374,11 @@
                         <div class="progress-text" id="progressText">Ready to scrape...</div>
                     </div>
                 </div>
+                
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+                    <h4 style="margin-bottom: 10px;">Debug Options</h4>
+                    <button onclick="toggleDebug()" style="background-color: #6c757d;">Toggle Debug</button>
+                </div>
             </div>
         </div>
 
@@ -424,7 +429,6 @@
             <button onclick="clearFilters()">Clear All</button>
             <button class="export-btn" onclick="exportKML()">Export KML</button>
             <button class="export-btn" onclick="exportCSV()">Export CSV</button>
-            <button onclick="toggleDebug()">Toggle Debug</button>
         </div>
 
         <div class="stats" id="stats">No data loaded</div>
