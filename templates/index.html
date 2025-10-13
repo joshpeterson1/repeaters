@@ -331,6 +331,11 @@
         .header-container {
             position: relative;
         }
+        
+        /* Fix Mapbox popup close button accessibility issue */
+        .mapboxgl-popup-close-button {
+            aria-hidden: false !important;
+        }
     </style>
 </head>
 <body>
