@@ -58,7 +58,7 @@ def get_data():
                 if row.get('coordinates') and row['coordinates'] != 'N/A':
                     import re
                     # Format: "Lat:40.6136° N.   (40°36'49"")Lon:112.1869° W. (112°11'13"")"
-                    coord_match = re.search(r'Lat:(\d+\.\d+)°?\s*N.*?Lon:(\d+\.\d+)°?\s*W', row['coordinates'])
+                    coord_match = re.search(r'Lat:(\d+\.\d+)°?\s*N\..*?Lon:(\d+\.\d+)°?\s*W', row['coordinates'])
                     if coord_match:
                         row['lat'] = float(coord_match.group(1))
                         row['lon'] = -float(coord_match.group(2))
