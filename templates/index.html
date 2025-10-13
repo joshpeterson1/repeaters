@@ -237,6 +237,15 @@
             align-items: center;
             flex-wrap: wrap;
         }
+        .control-group label input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        .control-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -297,6 +306,12 @@
             <div class="control-group">
                 <label for="callFilter">Call Sign:</label>
                 <input type="text" id="callFilter" placeholder="K7DAV" />
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="wideCoverageFilter" />
+                    Show Only Wide Coverage
+                </label>
             </div>
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
@@ -929,6 +944,7 @@
             const maxDistance = document.getElementById('distance').value;
             const bandFilter = document.getElementById('bandFilter').value;
             const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
+            const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
 
             // Get user location if ZIP code provided
             if (zipCode && zipCode !== '') {
@@ -948,6 +964,14 @@
                 // Call sign filter
                 if (callFilter && !repeater.call.toLowerCase().includes(callFilter)) {
                     return false;
+                }
+
+                // Wide coverage filter - look for 'X' in info field
+                if (wideCoverageOnly) {
+                    const info = (repeater.info || '').toUpperCase();
+                    if (!info.includes('X')) {
+                        return false;
+                    }
                 }
 
                 // Distance filter
@@ -974,6 +998,7 @@
             document.getElementById('distance').value = '';
             document.getElementById('bandFilter').value = '';
             document.getElementById('callFilter').value = '';
+            document.getElementById('wideCoverageFilter').checked = false;
             userLocation = null;
             
             // Clear distances
