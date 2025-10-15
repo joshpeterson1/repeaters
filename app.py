@@ -1,24 +1,17 @@
 from flask import Flask, render_template, jsonify, request, send_file
-from flask_socketio import SocketIO, emit
 import json
 import os
 import csv
 from datetime import datetime
-import threading
 from utah_repeater_scraper import scrape_repeater_list, save_to_csv
 from utah_repeater_scraper_v2 import scrape_raw_repeater_data, save_to_csv_v2
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'utah_repeater_secret_key'
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Global variable to track scraping status
 scraping_status = {
-    'is_scraping': False,
-    'progress': 0,
-    'message': '',
-    'total': 0,
-    'current': 0
+    'is_scraping': False
 }
 
 @app.route('/')
@@ -32,16 +25,25 @@ def start_scrape():
     if scraping_status['is_scraping']:
         return jsonify({'error': 'Scraping already in progress'}), 400
     
-    # Start scraping in a separate thread
-    thread = threading.Thread(target=scrape_with_progress)
-    thread.daemon = True
-    thread.start()
+    try:
+        scraping_status['is_scraping'] = True
+        
+        # Use the v2 scraper directly (synchronous)
+        repeaters = scrape_raw_repeater_data()
+        
+        # Save to CSV
+        save_to_csv_v2(repeaters, 'utah_repeaters.csv')
+        
+        return jsonify({
+            'message': f'Successfully scraped {len(repeaters)} repeaters',
+            'count': len(repeaters)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
-    return jsonify({'message': 'Scraping started'})
-
-@app.route('/api/status')
-def get_status():
-    return jsonify(scraping_status)
+    finally:
+        scraping_status['is_scraping'] = False
 
 @app.route('/api/data')
 def get_data():
@@ -97,66 +99,8 @@ def download_csv():
     else:
         return jsonify({'error': 'No CSV file available'}), 404
 
-def scrape_with_progress():
-    """Scrape repeaters with progress updates via WebSocket (using v2 scraper)"""
-    global scraping_status
-    
-    try:
-        scraping_status.update({
-            'is_scraping': True,
-            'progress': 0,
-            'message': 'Starting v2.0 scrape...',
-            'total': 0,
-            'current': 0
-        })
-        
-        socketio.emit('scrape_progress', scraping_status)
-        
-        # Use the v2 scraper
-        from utah_repeater_scraper_v2 import scrape_raw_repeater_data, save_to_csv_v2
-        
-        scraping_status['message'] = 'Fetching raw repeater data...'
-        socketio.emit('scrape_progress', scraping_status)
-        
-        # Scrape the data using v2
-        repeaters = scrape_raw_repeater_data()
-        
-        scraping_status.update({
-            'total': len(repeaters),
-            'current': len(repeaters),
-            'progress': 100,
-            'message': f'Scraped {len(repeaters)} repeaters successfully with v2.0!'
-        })
-        socketio.emit('scrape_progress', scraping_status)
-        
-        # Save to CSV (use standard filename for compatibility)
-        save_to_csv_v2(repeaters, 'utah_repeaters.csv')
-        
-        scraping_status['message'] = f'Saved {len(repeaters)} repeaters to CSV file (v2.0 format)'
-        socketio.emit('scrape_progress', scraping_status)
-        
-        # Emit completion event
-        socketio.emit('scrape_complete', {
-            'success': True,
-            'count': len(repeaters),
-            'message': f'Successfully scraped {len(repeaters)} repeaters using v2.0 scraper'
-        })
-        
-    except Exception as e:
-        scraping_status['message'] = f'Error: {str(e)}'
-        socketio.emit('scrape_progress', scraping_status)
-        socketio.emit('scrape_complete', {
-            'success': False,
-            'error': str(e)
-        })
-    
-    finally:
-        scraping_status['is_scraping'] = False
-
-@socketio.on('connect')
-def handle_connect():
-    emit('connected', {'message': 'Connected to server'})
+# Removed WebSocket functions - no longer needed
 
 if __name__ == '__main__':
     # This is only for local development
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

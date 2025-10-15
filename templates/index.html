@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utah Repeater Viewer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <style>
@@ -430,11 +429,8 @@
                         <strong>v2.0 Scraper:</strong> Uses raw CSV data, filters inactive repeaters, much faster than v1.0
                     </div>
                     
-                    <div class="progress-container" id="progressContainer">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                        <div class="progress-text" id="progressText">Ready to scrape...</div>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        <strong>Note:</strong> Scraping may take 30-60 seconds. The page will refresh automatically when complete.
                     </div>
                 </div>
                 
@@ -1168,21 +1164,9 @@
             document.getElementById('bothViewBtn').classList.add('active');
         }
 
-        // Initialize Socket.IO connection
+        // Removed Socket.IO - using simple HTTP requests now
         function initSocket() {
-            socket = io();
-            
-            socket.on('connect', function() {
-                addDebug('Connected to server');
-            });
-            
-            socket.on('scrape_progress', function(data) {
-                updateProgress(data);
-            });
-            
-            socket.on('scrape_complete', function(data) {
-                handleScrapeComplete(data);
-            });
+            // No longer needed
         }
 
         function addDebug(message) {
@@ -1260,11 +1244,9 @@
 
         function startScrape() {
             const scrapeBtn = document.getElementById('scrapeBtn');
-            const progressContainer = document.getElementById('progressContainer');
             
             scrapeBtn.disabled = true;
-            scrapeBtn.textContent = 'Scraping...';
-            progressContainer.style.display = 'block';
+            scrapeBtn.textContent = 'Scraping... (this may take a minute)';
             
             fetch('/api/scrape', {
                 method: 'POST',
@@ -1276,50 +1258,25 @@
             .then(data => {
                 if (data.error) {
                     showMessage(data.error, 'error');
-                    resetScrapeButton();
                 } else {
-                    addDebug('Scraping started...');
+                    showMessage(data.message, 'success');
+                    // Auto-reload data after successful scrape
+                    setTimeout(() => {
+                        loadData();
+                        closeSettingsModal();
+                    }, 1000);
                 }
             })
             .catch(error => {
-                showMessage('Error starting scrape: ' + error.message, 'error');
-                resetScrapeButton();
+                showMessage('Error: ' + error.message, 'error');
+            })
+            .finally(() => {
+                scrapeBtn.disabled = false;
+                scrapeBtn.textContent = 'Scrape New Data (v2.0)';
             });
         }
 
-        function updateProgress(data) {
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            
-            progressFill.style.width = data.progress + '%';
-            progressText.textContent = data.message;
-            
-            addDebug(`Progress: ${data.progress}% - ${data.message}`);
-        }
-
-        function handleScrapeComplete(data) {
-            if (data.success) {
-                showMessage(data.message, 'success');
-                // Automatically load the new data and close modal
-                setTimeout(() => {
-                    loadData();
-                    closeSettingsModal();
-                }, 1000);
-            } else {
-                showMessage('Scraping failed: ' + data.error, 'error');
-            }
-            
-            resetScrapeButton();
-        }
-
-        function resetScrapeButton() {
-            const scrapeBtn = document.getElementById('scrapeBtn');
-            const progressContainer = document.getElementById('progressContainer');
-            
-            scrapeBtn.disabled = false;
-            scrapeBtn.textContent = 'Scrape New Data (v2.0)';
-            progressContainer.style.display = 'none';
-        }
+        // Removed progress tracking functions - no longer needed
 
         function loadData() {
             fetch('/api/data')
