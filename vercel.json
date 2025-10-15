@@ -1,15 +1,4 @@
 {
-  "functions": {
-    "app.py": {
-      "runtime": "@vercel/python@3.9.0"
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/app.py"
-    }
-  ],
   "crons": [
     {
       "path": "/api/cron-scrape",
