@@ -361,6 +361,41 @@
         .favorite-star.favorited:hover {
             color: #e0a800;
         }
+        
+        /* Fullscreen button styling */
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .fullscreen-btn:hover {
+            background: white;
+        }
+        
+        .map-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+        }
+        
+        .map-container.fullscreen #map {
+            height: 100vh;
+        }
     </style>
 </head>
 <body>
@@ -510,6 +545,7 @@
                 <button onclick="centerMapOnUser()" id="centerUserBtn" style="display: none;">Center on My Location</button>
                 <span id="mapStats"></span>
             </div>
+            <button class="fullscreen-btn" onclick="toggleFullscreen()" id="fullscreenBtn" title="Toggle Fullscreen">⛶</button>
             <div id="map"></div>
         </div>
         
@@ -2250,6 +2286,40 @@ ${repeater.distance ? `<b>Distance:</b> ${repeater.distance} miles<br/>` : ''}
             // Refresh the table to update the star there too
             displayRepeaters();
         }
+
+        function toggleFullscreen() {
+            const mapContainer = document.getElementById('mapContainer');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            
+            if (mapContainer.classList.contains('fullscreen')) {
+                // Exit fullscreen
+                mapContainer.classList.remove('fullscreen');
+                fullscreenBtn.innerHTML = '⛶';
+                fullscreenBtn.title = 'Toggle Fullscreen';
+            } else {
+                // Enter fullscreen
+                mapContainer.classList.add('fullscreen');
+                fullscreenBtn.innerHTML = '✕';
+                fullscreenBtn.title = 'Exit Fullscreen';
+            }
+            
+            // Resize map after transition
+            setTimeout(() => {
+                if (map) {
+                    map.resize();
+                }
+            }, 100);
+        }
+
+        // Handle ESC key to exit fullscreen
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const mapContainer = document.getElementById('mapContainer');
+                if (mapContainer.classList.contains('fullscreen')) {
+                    toggleFullscreen();
+                }
+            }
+        });
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
