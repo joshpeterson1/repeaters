@@ -490,8 +490,7 @@
             </div>
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
-            <button class="export-btn" onclick="exportKML()">Export KML</button>
-            <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+            <button class="export-btn" onclick="openExportModal()">Export</button>
         </div>
 
         <div class="stats" id="stats">No data loaded</div>
@@ -1862,7 +1861,140 @@
             URL.revokeObjectURL(url);
             
             showMessage(`Exported ${filteredRepeaters.length} repeaters to CSV`, 'success');
+            closeExportModal();
         }
+
+        function exportKX3() {
+            if (filteredRepeaters.length === 0) {
+                showMessage('No repeaters to export', 'error');
+                return;
+            }
+
+            const kx3xml = generateKX3XML(filteredRepeaters);
+            const blob = new Blob([kx3xml], { type: 'application/xml;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'utah_repeaters_kx3.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage(`Exported ${filteredRepeaters.length} repeaters to KX3 format`, 'success');
+            closeExportModal();
+        }
+
+        function generateKX3XML(repeaters) {
+            let xml = `<?xml version="1.0" standalone="yes"?>
+<K3ME xmlns="http://elecraft.com/K3MEDataSet.xsd">`;
+
+            repeaters.forEach((repeater, index) => {
+                if (!repeater.frequency) return; // Skip if no frequency
+                
+                const freq = parseFloat(repeater.frequency);
+                const offset = parseOffset(repeater.offset);
+                const ctcss = parseCTCSS(repeater.ctcss);
+                const label = generateLabel(repeater);
+                const description = `${repeater.general_location || repeater.location || ''} ${repeater.sponsor || ''}`.trim();
+                
+                // Determine mode based on frequency
+                const mode = freq < 30 ? 'USB' : 'FM';
+                
+                // Calculate flags based on offset and CTCSS
+                let flags4 = 0;
+                if (mode === 'FM') {
+                    if (offset !== 0 && ctcss > 0) {
+                        flags4 = offset > 0 ? 5 : 6; // +offset+tone or -offset+tone
+                    } else if (offset !== 0) {
+                        flags4 = offset > 0 ? 1 : 2; // +offset or -offset
+                    } else if (ctcss > 0) {
+                        flags4 = 4; // tone only
+                    }
+                }
+
+                xml += `
+  <FrequencyMemory>
+    <ID>${index}</ID>
+    <Label>${escapeXML(label)}</Label>
+    <ModeA>${mode}</ModeA>
+    <ModeB>${mode}</ModeB>
+    <Description>${escapeXML(description)}</Description>`;
+
+                if (offset !== 0) {
+                    xml += `
+    <RepeaterOffset>${offset > 0 ? '+' : ''}${offset}</RepeaterOffset>`;
+                }
+
+                if (ctcss > 0) {
+                    xml += `
+    <PLTone>${ctcss}</PLTone>`;
+                }
+
+                xml += `
+    <VfoA>${freq}</VfoA>
+    <VfoB>${freq}</VfoB>`;
+
+                if (flags4 > 0) {
+                    xml += `
+    <Flags4>${flags4}</Flags4>`;
+                }
+
+                xml += `
+  </FrequencyMemory>`;
+            });
+
+            xml += `
+</K3ME>`;
+
+            return xml;
+        }
+
+        function parseOffset(offsetStr) {
+            if (!offsetStr || offsetStr === 'N/A' || offsetStr === '') return 0;
+            
+            // Handle common offset formats
+            const cleanOffset = offsetStr.replace(/[^\d\.\-\+]/g, '');
+            const offset = parseFloat(cleanOffset);
+            
+            if (isNaN(offset)) return 0;
+            
+            // Convert kHz to MHz if needed (assume values > 10 are in kHz)
+            if (Math.abs(offset) > 10) {
+                return offset / 1000;
+            }
+            
+            return offset;
+        }
+
+        function parseCTCSS(ctcssStr) {
+            if (!ctcssStr || ctcssStr === 'N/A' || ctcssStr === '') return 0;
+            
+            // Extract numeric value from CTCSS string
+            const match = ctcssStr.match(/(\d+\.?\d*)/);
+            if (match) {
+                return parseFloat(match[1]);
+            }
+            
+            return 0;
+        }
+
+        function generateLabel(repeater) {
+            // Create a short label for the repeater
+            let label = '';
+            
+            if (repeater.call) {
+                // Use call sign, truncate if too long
+                label = repeater.call.substring(0, 8);
+            } else if (repeater.frequency) {
+                // Use frequency as fallback
+                label = repeater.frequency.toString();
+            } else {
+                label = 'RPT';
+            }
+            
+            return label;
 
         function generateCSV(repeaters) {
             if (repeaters.length === 0) return '';
