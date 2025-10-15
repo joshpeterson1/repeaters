@@ -428,6 +428,7 @@
                         <h4 style="margin-bottom: 10px;">Radio Programming Formats</h4>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <button class="export-btn" onclick="exportKX3()">Export Elecraft KX3</button>
+                            <button class="export-btn" onclick="exportChirp()">Export CHIRP CSV</button>
                         </div>
                     </div>
                     
@@ -1886,6 +1887,28 @@
             closeExportModal();
         }
 
+        function exportChirp() {
+            if (filteredRepeaters.length === 0) {
+                showMessage('No repeaters to export', 'error');
+                return;
+            }
+
+            const chirpCsv = generateChirpCSV(filteredRepeaters);
+            const blob = new Blob([chirpCsv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'utah_repeaters_chirp.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage(`Exported ${filteredRepeaters.length} repeaters to CHIRP format`, 'success');
+            closeExportModal();
+        }
+
         function generateKX3XML(repeaters) {
             let xml = `<?xml version="1.0" standalone="yes"?>
 <K3ME xmlns="http://elecraft.com/K3MEDataSet.xsd">`;
@@ -1949,6 +1972,72 @@
 </K3ME>`;
 
             return xml;
+        }
+
+        function generateChirpCSV(repeaters) {
+            // CHIRP CSV format headers
+            let csv = 'Location,Name,Frequency,Duplex,Offset,Tone,rToneFreq,cToneFreq,DtcsCode,DtcsPolarity,Mode,TStep,Skip,Comment,URCALL,RPT1CALL,RPT2CALL\n';
+            
+            repeaters.forEach((repeater, index) => {
+                if (!repeater.frequency) return; // Skip if no frequency
+                
+                const freq = parseFloat(repeater.frequency);
+                const offset = parseOffset(repeater.offset);
+                const ctcss = parseCTCSS(repeater.ctcss);
+                
+                // Determine duplex setting
+                let duplex = '';
+                if (offset > 0) duplex = '+';
+                else if (offset < 0) duplex = '-';
+                
+                // Format offset as absolute value in MHz
+                const offsetMHz = Math.abs(offset);
+                
+                // Determine tone mode
+                let tone = '';
+                let rToneFreq = '';
+                let cToneFreq = '';
+                if (ctcss > 0) {
+                    tone = 'Tone';
+                    rToneFreq = ctcss.toString();
+                    cToneFreq = ctcss.toString();
+                }
+                
+                // Create name from call sign and location
+                const name = `${repeater.call || 'RPT'} ${(repeater.general_location || repeater.location || '').substring(0, 10)}`.trim();
+                
+                // Create comment with additional info
+                const commentParts = [];
+                if (repeater.sponsor) commentParts.push(repeater.sponsor);
+                if (repeater.site_name) commentParts.push(repeater.site_name);
+                if (repeater.info) commentParts.push(repeater.info);
+                const comment = commentParts.join(' | ').substring(0, 50); // Limit comment length
+                
+                // Build CSV row
+                const row = [
+                    index + 1, // Location (memory number)
+                    `"${name}"`, // Name
+                    freq.toFixed(6), // Frequency
+                    duplex, // Duplex
+                    offsetMHz > 0 ? offsetMHz.toFixed(6) : '', // Offset
+                    tone, // Tone
+                    rToneFreq, // rToneFreq
+                    cToneFreq, // cToneFreq
+                    '', // DtcsCode
+                    'NN', // DtcsPolarity
+                    'FM', // Mode
+                    '5.00', // TStep (5kHz for VHF/UHF)
+                    '', // Skip
+                    `"${comment}"`, // Comment
+                    '', // URCALL
+                    '', // RPT1CALL
+                    '' // RPT2CALL
+                ];
+                
+                csv += row.join(',') + '\n';
+            });
+            
+            return csv;
         }
 
         function parseOffset(offsetStr) {
