@@ -339,6 +339,28 @@
         .mapboxgl-popup-close-button {
             aria-hidden: false !important;
         }
+        
+        /* Favorites star styling */
+        .favorite-star {
+            cursor: pointer;
+            font-size: 16px;
+            color: #ccc;
+            margin-right: 8px;
+            transition: color 0.2s ease;
+            user-select: none;
+        }
+        
+        .favorite-star:hover {
+            color: #ffc107;
+        }
+        
+        .favorite-star.favorited {
+            color: #ffc107;
+        }
+        
+        .favorite-star.favorited:hover {
+            color: #e0a800;
+        }
     </style>
 </head>
 <body>
@@ -422,6 +444,10 @@
                     Show Only Wide Coverage
                 </label>
                 <label>
+                    <input type="checkbox" id="showFavoritesOnly" />
+                    Show Only Favorites
+                </label>
+                <label>
                     <input type="checkbox" id="drawIntertieLinksFilter" />
                     Draw Intertie Links
                 </label>
@@ -459,6 +485,7 @@
             <table id="repeaterTable">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">★</th>
                         <th onclick="sortTable('frequency')">Frequency</th>
                         <th onclick="sortTable('call')">Call</th>
                         <th onclick="sortTable('general_location')">Location</th>
@@ -493,6 +520,7 @@
         let repeaterLinks = [];
         let drawIntertieLinks = false;
         let drawOtherLinks = false;
+        let favorites = new Set();
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
 
         // Initialize Mapbox map
@@ -769,8 +797,16 @@
                 </div>`;
             }
             
+            const repeaterId = getRepeaterId(repeater);
+            const isFavorited = favorites.has(repeaterId);
+            
             content += `
-                <h4>${repeater.call || 'N/A'}</h4>
+                <h4>
+                    <span class="favorite-star ${isFavorited ? 'favorited' : ''}" 
+                          onclick="toggleFavoriteFromPopup('${repeaterId}', this)" 
+                          title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">★</span>
+                    ${repeater.call || 'N/A'}
+                </h4>
                 <div class="frequency">${repeater.frequency || 'N/A'} MHz</div>
                 <p><strong>Location:</strong> ${repeater.location || repeater.general_location || 'N/A'}</p>
                 <p><strong>Site:</strong> ${repeater.site_name || 'N/A'}</p>
@@ -1537,6 +1573,7 @@
             const selectedBands = Array.from(bandFilterSelect.selectedOptions).map(option => option.value);
             const callFilter = document.getElementById('callFilter').value.trim().toLowerCase();
             const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
+            const showFavoritesOnly = document.getElementById('showFavoritesOnly').checked;
             drawIntertieLinks = document.getElementById('drawIntertieLinksFilter').checked;
             drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
 
@@ -1564,6 +1601,14 @@
                 if (wideCoverageOnly) {
                     const info = (repeater.info || '').toUpperCase();
                     if (!info.includes('X')) {
+                        return false;
+                    }
+                }
+
+                // Favorites filter
+                if (showFavoritesOnly) {
+                    const repeaterId = getRepeaterId(repeater);
+                    if (!favorites.has(repeaterId)) {
                         return false;
                     }
                 }
@@ -1600,6 +1645,7 @@
             Array.from(bandFilter.options).forEach(option => option.selected = false);
             document.getElementById('callFilter').value = '';
             document.getElementById('wideCoverageFilter').checked = false;
+            document.getElementById('showFavoritesOnly').checked = false;
             document.getElementById('drawIntertieLinksFilter').checked = false;
             document.getElementById('drawOtherLinksFilter').checked = false;
             drawIntertieLinks = false;
@@ -1671,10 +1717,23 @@
             filteredRepeaters.forEach((repeater, index) => {
                 const row = tbody.insertRow();
                 
-                // Make row clickable
+                // Make row clickable (except for the star cell)
                 row.classList.add('table-row-clickable');
                 row.title = 'Click to show on map';
-                row.addEventListener('click', () => handleRowClick(repeater, row));
+                row.addEventListener('click', (e) => {
+                    // Don't trigger row click if clicking on the star
+                    if (!e.target.classList.contains('favorite-star')) {
+                        handleRowClick(repeater, row);
+                    }
+                });
+                
+                // Add favorite star cell
+                const starCell = row.insertCell();
+                const repeaterId = getRepeaterId(repeater);
+                const isFavorited = favorites.has(repeaterId);
+                starCell.innerHTML = `<span class="favorite-star ${isFavorited ? 'favorited' : ''}" 
+                    onclick="toggleFavorite('${repeaterId}', this)" 
+                    title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">★</span>`;
                 
                 const freqCell = row.insertCell();
                 freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
@@ -1705,14 +1764,15 @@
         function updateStats() {
             const total = allRepeaters.length;
             const filtered = filteredRepeaters.length;
+            const favoritesCount = favorites.size;
             const statsEl = document.getElementById('stats');
             
             if (total === 0) {
                 statsEl.textContent = 'No data loaded';
             } else if (filtered === total) {
-                statsEl.textContent = `Showing all ${total} repeaters`;
+                statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites)`;
             } else {
-                statsEl.textContent = `Showing ${filtered} of ${total} repeaters`;
+                statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites)`;
             }
         }
 
@@ -1874,8 +1934,58 @@ ${repeater.distance ? `<b>Distance:</b> ${repeater.distance} miles<br/>` : ''}
             }, 5000);
         }
 
+        // Favorites management functions
+        function getRepeaterId(repeater) {
+            // Create a unique ID for each repeater using call sign and frequency
+            return `${repeater.call}-${repeater.frequency}`;
+        }
+
+        function loadFavorites() {
+            try {
+                const savedFavorites = localStorage.getItem('utah-repeater-favorites');
+                if (savedFavorites) {
+                    favorites = new Set(JSON.parse(savedFavorites));
+                }
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+                favorites = new Set();
+            }
+        }
+
+        function saveFavorites() {
+            try {
+                localStorage.setItem('utah-repeater-favorites', JSON.stringify([...favorites]));
+            } catch (error) {
+                console.error('Error saving favorites:', error);
+            }
+        }
+
+        function toggleFavorite(repeaterId, starElement) {
+            if (favorites.has(repeaterId)) {
+                favorites.delete(repeaterId);
+                starElement.classList.remove('favorited');
+                starElement.title = 'Add to favorites';
+                showMessage('Removed from favorites', 'success');
+            } else {
+                favorites.add(repeaterId);
+                starElement.classList.add('favorited');
+                starElement.title = 'Remove from favorites';
+                showMessage('Added to favorites', 'success');
+            }
+            
+            saveFavorites();
+            updateStats();
+        }
+
+        function toggleFavoriteFromPopup(repeaterId, starElement) {
+            toggleFavorite(repeaterId, starElement);
+            // Refresh the table to update the star there too
+            displayRepeaters();
+        }
+
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            loadFavorites();
             initSocket();
             // Try to load existing data on page load
             loadData();
