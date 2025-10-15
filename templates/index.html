@@ -404,42 +404,9 @@
     <div class="container">
         <div class="header-container">
             <h1>Utah Repeater Viewer</h1>
-            <button class="settings-btn" onclick="openSettingsModal()">Settings</button>
         </div>
         
-        <!-- Settings Modal -->
-        <div id="settingsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Data Management Settings</h3>
-                    <span class="close" onclick="closeSettingsModal()">&times;</span>
-                </div>
-                
-                <div class="scrape-section">
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
-                        <button id="scrapeBtn" class="scrape-btn" onclick="confirmAndStartScrape()">Scrape New Data (v2.0)</button>
-                        <a href="/download/csv" target="_blank">
-                            <button class="export-btn">Download CSV</button>
-                        </a>
-                    </div>
-                    
-                    <div class="last-updated" id="lastUpdated" style="margin-bottom: 15px;"></div>
-                    
-                    <div style="margin-bottom: 15px; font-size: 12px; color: #666; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
-                        <strong>v2.0 Scraper:</strong> Uses raw CSV data, filters inactive repeaters, much faster than v1.0
-                    </div>
-                    
-                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
-                        <strong>Note:</strong> Scraping may take 30-60 seconds. The page will refresh automatically when complete.
-                    </div>
-                </div>
-                
-                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
-                    <h4 style="margin-bottom: 10px;">Debug Options</h4>
-                    <button onclick="toggleDebug()" style="background-color: #6c757d;">Toggle Debug</button>
-                </div>
-            </div>
-        </div>
+        <div class="last-updated" id="lastUpdated" style="margin-bottom: 15px; font-size: 12px; color: #666; font-style: italic;"></div>
 
         <!-- Export Modal -->
         <div id="exportModal" class="modal">
@@ -1177,15 +1144,6 @@
             // Simplified - no more debug DOM manipulation
         }
 
-        // Modal functions
-        function openSettingsModal() {
-            document.getElementById('settingsModal').style.display = 'block';
-        }
-
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-
         // Export modal functions
         function openExportModal() {
             document.getElementById('exportModal').style.display = 'block';
@@ -1197,86 +1155,13 @@
 
         // Close modal when clicking outside of it
         window.onclick = function(event) {
-            const settingsModal = document.getElementById('settingsModal');
             const exportModal = document.getElementById('exportModal');
-            if (event.target === settingsModal) {
-                closeSettingsModal();
-            }
             if (event.target === exportModal) {
                 closeExportModal();
             }
         }
 
-        function getDataAge() {
-            if (!lastDataUpdate) return null;
-            
-            const now = new Date();
-            const dataDate = new Date(lastDataUpdate);
-            const diffTime = Math.abs(now - dataDate);
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            
-            return { days: diffDays, hours: diffHours };
-        }
-
-        function confirmAndStartScrape() {
-            const dataAge = getDataAge();
-            
-            if (dataAge && dataAge.days < 7) {
-                let ageText;
-                if (dataAge.days === 0) {
-                    ageText = dataAge.hours === 1 ? '1 hour' : `${dataAge.hours} hours`;
-                } else if (dataAge.days === 1) {
-                    ageText = '1 day';
-                } else {
-                    ageText = `${dataAge.days} days`;
-                }
-                
-                const message = `Are you sure you want to scrape new data? Current data is only ${ageText} old.`;
-                
-                if (!confirm(message)) {
-                    return;
-                }
-            }
-            
-            startScrape();
-        }
-
-        function startScrape() {
-            const scrapeBtn = document.getElementById('scrapeBtn');
-            
-            scrapeBtn.disabled = true;
-            scrapeBtn.textContent = 'Scraping... (this may take a minute)';
-            
-            fetch('/api/scrape', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showMessage(data.error, 'error');
-                } else {
-                    showMessage(data.message, 'success');
-                    // Auto-reload data after successful scrape
-                    setTimeout(() => {
-                        loadData();
-                        closeSettingsModal();
-                    }, 1000);
-                }
-            })
-            .catch(error => {
-                showMessage('Error: ' + error.message, 'error');
-            })
-            .finally(() => {
-                scrapeBtn.disabled = false;
-                scrapeBtn.textContent = 'Scrape New Data (v2.0)';
-            });
-        }
-
-        // Removed progress tracking functions - no longer needed
+        // Removed scraping functions - now handled by cron
 
         function loadData() {
             fetch('/api/data')
@@ -1288,9 +1173,8 @@
                     allRepeaters = data.repeaters;
                     filteredRepeaters = [...allRepeaters];
                     
-                    // Process data based on version
-                    const dataVersion = data.data_version || 'v1';
-                    processRepeaterData(dataVersion);
+                    // Process data (always v2 now)
+                    processRepeaterData('v2');
                     
                     displayRepeaters();
                     updateStats();
@@ -1299,16 +1183,15 @@
                         updateMapData();
                     }
                     
-                    // Store the last update time for age checking
+                    // Store the last update time
                     lastDataUpdate = data.last_updated;
                     
                     // Update last updated time
                     const lastUpdated = document.getElementById('lastUpdated');
                     const updateTime = new Date(data.last_updated).toLocaleString();
-                    const versionText = dataVersion === 'v2' ? ' (v2.0 data)' : ' (v1.0 data)';
-                    lastUpdated.textContent = `Last updated: ${updateTime}${versionText}`;
+                    lastUpdated.textContent = `Data updated weekly via automated scraping. Last update: ${updateTime}`;
                     
-                    showMessage(`Loaded ${data.count} repeaters using ${dataVersion} format`, 'success');
+                    showMessage(`Loaded ${data.count} repeaters`, 'success');
                 }
             })
             .catch(error => {
