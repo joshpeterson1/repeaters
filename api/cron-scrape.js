@@ -19,6 +19,7 @@ export default async function handler(req, res) {
     const blob = await put('utah_repeaters.csv', csvData, {
       access: 'public',
       contentType: 'text/csv',
+      addRandomSuffix: false
     });
     
     console.log(`Successfully scraped ${repeaters.length} repeaters and saved to blob`);
