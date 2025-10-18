@@ -1145,6 +1145,44 @@
             console.log(message);
         }
 
+        function debugMissingLocationData() {
+            const missingLocationRepeaters = [];
+            let simplexCount = 0;
+            let sharedCount = 0;
+            let normalMissingCount = 0;
+            
+            allRepeaters.forEach(repeater => {
+                const callsign = (repeater.call || '').toLowerCase();
+                const hasLocation = repeater.lat && repeater.lon;
+                
+                if (callsign.includes('(simplex)')) {
+                    simplexCount++;
+                } else if (callsign.includes('(shared)')) {
+                    sharedCount++;
+                } else if (!hasLocation) {
+                    // Normal callsign with missing location data
+                    normalMissingCount++;
+                    missingLocationRepeaters.push({
+                        call: repeater.call,
+                        location: repeater.location || repeater.general_location || 'No location info'
+                    });
+                }
+            });
+            
+            console.log(`=== LOCATION DATA ANALYSIS ===`);
+            console.log(`Total repeaters: ${allRepeaters.length}`);
+            console.log(`Simplex entries: ${simplexCount}`);
+            console.log(`Shared entries: ${sharedCount}`);
+            console.log(`Normal callsigns with missing location data: ${normalMissingCount}`);
+            
+            if (missingLocationRepeaters.length > 0) {
+                console.log(`\n=== NORMAL CALLSIGNS WITH MISSING LOCATION DATA ===`);
+                missingLocationRepeaters.forEach((repeater, index) => {
+                    console.log(`${index + 1}. ${repeater.call} - Location: "${repeater.location}"`);
+                });
+            }
+        }
+
         function toggleDebug() {
             // Simplified - no more debug DOM manipulation
         }
@@ -1190,6 +1228,9 @@
                     
                     // Apply default filter to hide closed repeaters
                     applyFilters();
+                    
+                    // Debug missing location data
+                    debugMissingLocationData();
                     
                     // Store the last update time
                     lastDataUpdate = data.last_updated;
@@ -1664,6 +1705,14 @@
                 } else if (userLocation && repeater.lat && repeater.lon) {
                     const distance = calculateDistance(userLocation.lat, userLocation.lon, repeater.lat, repeater.lon);
                     repeater.distance = distance.toFixed(1);
+                } else if (userLocation) {
+                    // Set distance based on callsign type
+                    const callsign = (repeater.call || '').toLowerCase();
+                    if (callsign.includes('(simplex)') || callsign.includes('(shared)')) {
+                        repeater.distance = 'None';
+                    } else if (!repeater.lat || !repeater.lon) {
+                        repeater.distance = 'N/A';
+                    }
                 }
 
                 return true;
@@ -1703,6 +1752,7 @@
             displayRepeaters();
             updateStats();
             
+            // Hide center user button
             document.getElementById('centerUserBtn').style.display = 'none';
             updateMapData();
         }
@@ -1792,7 +1842,11 @@
                 
                 const distanceCell = row.insertCell();
                 if (repeater.distance) {
-                    distanceCell.innerHTML = `<span class="distance">${repeater.distance} mi</span>`;
+                    if (repeater.distance === 'None' || repeater.distance === 'N/A') {
+                        distanceCell.textContent = repeater.distance;
+                    } else {
+                        distanceCell.innerHTML = `<span class="distance">${repeater.distance} mi</span>`;
+                    }
                 } else {
                     distanceCell.textContent = '';
                 }
