@@ -1435,10 +1435,10 @@
             content += `Total repeaters: ${allRepeaters.length}\n`;
             content += `Simplex entries: ${simplexCount}\n`;
             content += `Shared entries: ${sharedCount}\n`;
-            content += `Normal callsigns with missing location data: ${normalMissingCount}\n\n`;
+            content += `Normal callsigns missing precision location data: ${normalMissingCount}\n\n`;
             
             if (missingLocationRepeaters.length > 0) {
-                content += '=== NORMAL CALLSIGNS WITH MISSING LOCATION DATA ===\n';
+                content += '=== NORMAL CALLSIGNS MISSING PRECISION LOCATION DATA ===\n';
                 missingLocationRepeaters.forEach((repeater, index) => {
                     content += `${index + 1}. ${repeater.call} - Location: "${repeater.location}"\n`;
                 });
