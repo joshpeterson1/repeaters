@@ -1340,13 +1340,7 @@
                             const reverseLinks = extractLinkFrequencies(linkedRepeater);
                             const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
                             
-                            // Normalize frequencies to 3 decimal places to handle precision issues
-                            const normalizedRepeaterFreq = Math.round(repeaterFreq * 1000) / 1000;
-                            
-                            if (reverseLinks.some(freq => {
-                                const normalizedFreq = Math.round(freq * 1000) / 1000;
-                                return Math.abs(normalizedFreq - normalizedRepeaterFreq) < 0.001;
-                            })) {
+                            if (reverseLinks.some(freq => Math.abs(freq - repeaterFreq) < 0.01)) {
                                 // Found bidirectional link
                                 const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
                                 
