@@ -1508,7 +1508,7 @@
                     /L\s*(\d+\.?\d*)/gi,           // L147.12, L 146.52
                     /Link\s*(\d+\.?\d*)/gi,       // Link 447.9
                     /Linked?\s*:?\s*(\d+\.?\d*)/gi, // Linked: 146.52
-                    /(\d{3}\.\d+)/g               // Any frequency pattern like 146.52
+                    /(\d+\.\d+)/g                 // Any frequency pattern like 146.52, 53.15, etc.
                 ];
                 
                 patterns.forEach(pattern => {
