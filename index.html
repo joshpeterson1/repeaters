@@ -1243,6 +1243,7 @@
             repeaterLinks = [];
             const linkMap = new Map(); // Track bidirectional links
             const intertieRepeaters = [];
+            const systemRepeaters = {}; // Track system repeaters by type
             const failedBidirectionalLinks = [];
             
             allRepeaters.forEach(repeater => {
@@ -1253,6 +1254,17 @@
                 
                 if (linkFreqText.includes('intertie')) {
                     intertieRepeaters.push(repeater);
+                    return;
+                }
+                
+                // Check for other system links (Cactus, BARC, SDARC)
+                const systemType = getSystemType(linkFreqText);
+                if (systemType) {
+                    // Add to system repeaters with type
+                    if (!systemRepeaters[systemType]) {
+                        systemRepeaters[systemType] = [];
+                    }
+                    systemRepeaters[systemType].push(repeater);
                     return;
                 }
                 
@@ -1320,11 +1332,32 @@
                 }
             }
             
+            // Create system links (all-to-all for each system type)
+            Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
+                for (let i = 0; i < repeaters.length; i++) {
+                    for (let j = i + 1; j < repeaters.length; j++) {
+                        repeaterLinks.push({
+                            from: repeaters[i],
+                            to: repeaters[j],
+                            type: 'system',
+                            systemType: systemType
+                        });
+                    }
+                }
+            });
+            
             // Debug output for failed bidirectional links
             console.log(`=== BIDIRECTIONAL LINK VALIDATION RESULTS ===`);
             console.log(`Total links that failed bidirectional validation: ${failedBidirectionalLinks.length}`);
             console.log(`Successful bidirectional links: ${repeaterLinks.filter(l => l.type === 'frequency').length}`);
             console.log(`Intertie links: ${repeaterLinks.filter(l => l.type === 'intertie').length}`);
+            console.log(`System links: ${repeaterLinks.filter(l => l.type === 'system').length}`);
+            
+            // Log system breakdown
+            Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
+                const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
+                console.log(`  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links`);
+            });
             
             if (failedBidirectionalLinks.length > 0) {
                 console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
@@ -1344,6 +1377,14 @@
             }
             
             addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
+        }
+
+        function getSystemType(linkFreqText) {
+            // Check for system keywords in link_freq field
+            if (linkFreqText.includes('cactus')) return 'cactus';
+            if (linkFreqText.includes('barc')) return 'barc';
+            if (linkFreqText.includes('sdarc')) return 'sdarc';
+            return null;
         }
 
         function extractLinkFrequencies(repeater) {
@@ -1425,7 +1466,7 @@
                 
                 // Check if this link type should be drawn
                 const shouldDrawLink = (link.type === 'intertie' && drawIntertieLinks) || 
-                                     (link.type !== 'intertie' && drawOtherLinks);
+                                     ((link.type === 'frequency' || link.type === 'system') && drawOtherLinks);
                 
                 if (fromVisible && toVisible && shouldDrawLink) {
                     // Find the actual rendered coordinates for both repeaters
@@ -1437,7 +1478,16 @@
                         let linkColor;
                         if (link.type === 'intertie') {
                             linkColor = '#FF0000'; // Red for intertie
+                        } else if (link.type === 'system') {
+                            // Use consistent colors for each system type
+                            const systemColors = {
+                                'cactus': '#00FF00',   // Green for Cactus
+                                'barc': '#0000FF',     // Blue for BARC
+                                'sdarc': '#FF00FF'     // Magenta for SDARC
+                            };
+                            linkColor = systemColors[link.systemType] || '#FFA500'; // Orange fallback
                         } else {
+                            // Frequency-based links get unique colors
                             const linkKey = [link.from.call, link.to.call].sort().join('-');
                             if (!linkColorMap.has(linkKey)) {
                                 linkColorMap.set(linkKey, linkColors[colorIndex % linkColors.length]);
