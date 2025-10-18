@@ -220,6 +220,8 @@ function processRawRepeaterData(row) {
     repeater.link_freq = safe_get('LINK_FREQ');
     repeater.portable = safe_get('PORTABLE');
     repeater.wide_area = safe_get('WIDE_AREA');
+    repeater.races = safe_get('RACES');
+    repeater.ares = safe_get('ARES');
     
     // Location data
     repeater.latitude = safe_get('LATITUDE');
