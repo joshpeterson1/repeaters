@@ -1354,8 +1354,10 @@
                             
                             // Check if the linked repeater references back to this repeater's frequency
                             const hasReverseLink = reverseLinks.some(freq => {
-                                const freqMatch = parseFloat(freq) === parseFloat(repeaterFreq);
-                                console.log(`    ${freq} matches ${repeaterFreq}? ${freqMatch}`);
+                                const freq1 = parseFloat(freq);
+                                const freq2 = parseFloat(repeaterFreq);
+                                const freqMatch = freq1 === freq2;
+                                console.log(`    parseFloat("${freq}") = ${freq1}, parseFloat("${repeaterFreq}") = ${freq2}, match: ${freqMatch}`);
                                 return freqMatch;
                             });
                             
