@@ -173,7 +173,8 @@ function formatInternetLink(internetLinkData) {
         }
         // Handle AllStar nodes (A followed by numbers)
         else if (/^A\d+$/i.test(trimmedPart)) {
-            formattedParts.push(`AllStar ${trimmedPart}`);
+            const nodeNumber = trimmedPart.substring(1);
+            formattedParts.push(`AllStar ${nodeNumber}`);
         }
         // Handle DMR with node numbers (e.g., "DMR 3192979")
         else if (/^DMR\s+\d+$/i.test(trimmedPart)) {
@@ -215,7 +216,7 @@ function formatInternetLink(internetLinkData) {
                     subFormatted.push(`IRLP ${subPart.substring(1)}`);
                 }
                 else if (/^A\d+$/i.test(subPart)) {
-                    subFormatted.push(`AllStar ${subPart}`);
+                    subFormatted.push(`AllStar ${subPart.substring(1)}`);
                 }
                 // Skip standalone letters
                 else if (!/^[EIA]$/i.test(subPart) && subPart.length > 0) {
