@@ -750,7 +750,8 @@
                         'line-dasharray': [
                             'case',
                             ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
-                            ['literal', [3, 3]] // Dashed for regular links
+                            ['==', ['get', 'systemType'], 'cactus'], ['literal', [1, 0]], // Solid for Cactus
+                            ['literal', [3, 3]] // Dashed for other links
                         ]
                     }
                 });
@@ -1504,6 +1505,7 @@
                             },
                             properties: {
                                 linkType: link.type,
+                                systemType: link.systemType || '', // Add systemType for styling
                                 linkColor: linkColor,
                                 fromCall: link.from.call,
                                 toCall: link.to.call,
