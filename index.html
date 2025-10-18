@@ -1330,8 +1330,7 @@
                     // Find ALL repeaters that match this frequency
                     const potentialMatches = findAllRepeatersByFrequency(linkFreq);
                     const validMatches = potentialMatches.filter(match => 
-                        match !== repeater && match.lat && match.lon && 
-                        !isSameRepeater(match, repeater) // Ensure we're not matching the same logical repeater
+                        match !== repeater && match.lat && match.lon
                     );
                     
                     if (validMatches.length > 0) {
@@ -1479,17 +1478,6 @@
             }
             
             addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
-        }
-
-        // Helper function to check if two repeaters are the same logical repeater
-        function isSameRepeater(repeater1, repeater2) {
-            // Check if they have the same call sign and frequency
-            const call1 = (repeater1.call || '').trim();
-            const call2 = (repeater2.call || '').trim();
-            const freq1 = parseFloat(repeater1.frequency || repeater1.output_frequency || 0);
-            const freq2 = parseFloat(repeater2.frequency || repeater2.output_frequency || 0);
-            
-            return call1 === call2 && freq1 === freq2;
         }
 
         // Helper function to create a unique pair key
