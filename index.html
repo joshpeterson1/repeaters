@@ -1377,12 +1377,17 @@
                             
                             // If there's exactly one match, add to non-validated links for optional display
                             if (validMatches.length === 1) {
-                                nonValidatedLinks.push({
-                                    from: repeater,
-                                    to: validMatches[0],
-                                    type: 'non-validated',
-                                    linkFreq: linkFreq
-                                });
+                                const linkKey = [repeater.call, validMatches[0].call].sort().join('-');
+                                
+                                // Only add if this pair isn't already in validated links
+                                if (!linkMap.has(linkKey)) {
+                                    nonValidatedLinks.push({
+                                        from: repeater,
+                                        to: validMatches[0],
+                                        type: 'non-validated',
+                                        linkFreq: linkFreq
+                                    });
+                                }
                             }
                         }
                     }
