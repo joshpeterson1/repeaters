@@ -443,9 +443,24 @@
                         </p>
                     </div>
                     
-                    <div style="text-align: center; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <div style="text-align: center; padding-top: 20px; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 10px;">
+                        <button onclick="showStatsForNerds()" style="background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Stats for nerds</button>
                         <a href="mailto:kk7qas@somber.dev?subject=UtahRepeaterViewer" style="color: #007bff; text-decoration: none; font-weight: bold;">Contact</a>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats for Nerds Modal -->
+        <div id="statsModal" class="modal">
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3>Stats for nerds</h3>
+                    <span class="close" onclick="closeStatsModal()">&times;</span>
+                </div>
+                
+                <div id="statsContent" style="font-family: monospace; font-size: 12px; white-space: pre-wrap; background-color: #f8f9fa; padding: 15px; border-radius: 4px; line-height: 1.4;">
+                    Loading stats...
                 </div>
             </div>
         </div>
@@ -1277,15 +1292,174 @@
             document.getElementById('exportModal').style.display = 'none';
         }
 
+        // Stats modal functions
+        function openStatsModal() {
+            document.getElementById('statsModal').style.display = 'block';
+        }
+
+        function closeStatsModal() {
+            document.getElementById('statsModal').style.display = 'none';
+        }
+
+        function showStatsForNerds() {
+            openStatsModal();
+            generateStatsContent();
+        }
+
+        function generateStatsContent() {
+            const statsContent = document.getElementById('statsContent');
+            let content = '';
+            
+            // Get bidirectional link validation results
+            const validatedLinks = repeaterLinks.filter(l => l.type === 'frequency').length;
+            const nonValidatedLinks = window.nonValidatedLinks ? window.nonValidatedLinks.length : 0;
+            const intertieLinks = repeaterLinks.filter(l => l.type === 'intertie').length;
+            const systemLinks = repeaterLinks.filter(l => l.type === 'system').length;
+            
+            content += '=== BIDIRECTIONAL LINK VALIDATION RESULTS ===\n';
+            content += `Successful bidirectional links: ${validatedLinks}\n`;
+            content += `Non-validated single links: ${nonValidatedLinks}\n`;
+            content += `Intertie links: ${intertieLinks}\n`;
+            content += `System links: ${systemLinks}\n`;
+            
+            // Get system breakdown
+            const systemRepeaters = {};
+            allRepeaters.forEach(repeater => {
+                const linkFreqText = (repeater.link_freq || '').toLowerCase();
+                const systemType = getSystemType(linkFreqText);
+                if (systemType) {
+                    if (!systemRepeaters[systemType]) {
+                        systemRepeaters[systemType] = [];
+                    }
+                    systemRepeaters[systemType].push(repeater);
+                }
+            });
+            
+            Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
+                const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
+                content += `  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links\n`;
+            });
+            
+            // Get failed bidirectional links
+            const failedBidirectionalLinks = [];
+            allRepeaters.forEach(repeater => {
+                if (!repeater.lat || !repeater.lon) return;
+                
+                const linkFrequencies = extractLinkFrequencies(repeater);
+                linkFrequencies.forEach(linkFreq => {
+                    const potentialMatches = findAllRepeatersByFrequency(linkFreq);
+                    const validMatches = potentialMatches.filter(match => 
+                        match !== repeater && match.lat && match.lon
+                    );
+                    
+                    if (validMatches.length > 0) {
+                        let foundBidirectionalLink = false;
+                        
+                        validMatches.forEach(linkedRepeater => {
+                            const reverseLinks = extractLinkFrequencies(linkedRepeater);
+                            const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
+                            
+                            const hasReverseLink = reverseLinks.some(freq => {
+                                const freq1 = parseFloat(freq);
+                                const freq2 = parseFloat(repeaterFreq);
+                                return freq1 === freq2;
+                            });
+                            
+                            if (hasReverseLink) {
+                                foundBidirectionalLink = true;
+                            }
+                        });
+                        
+                        if (!foundBidirectionalLink) {
+                            const failedLink = {
+                                call: repeater.call,
+                                frequency: repeater.frequency || repeater.output_frequency,
+                                location: repeater.location || repeater.general_location,
+                                linkFreq: linkFreq,
+                                potentialMatches: validMatches.map(match => ({
+                                    call: match.call,
+                                    frequency: match.frequency || match.output_frequency,
+                                    location: match.location || match.general_location
+                                }))
+                            };
+                            failedBidirectionalLinks.push(failedLink);
+                        }
+                    }
+                });
+            });
+            
+            content += `Failed bidirectional attempts: ${failedBidirectionalLinks.length}\n\n`;
+            
+            if (failedBidirectionalLinks.length > 0) {
+                content += '=== FAILED BIDIRECTIONAL LINKS ===\n';
+                failedBidirectionalLinks.forEach((link, index) => {
+                    content += `${index + 1}. ${link.call} (${link.frequency}) at ${link.location}\n`;
+                    content += `   → Links to: ${link.linkFreq}\n`;
+                    if (link.potentialMatches && link.potentialMatches.length > 0) {
+                        content += `   → Found ${link.potentialMatches.length} potential matches:\n`;
+                        link.potentialMatches.forEach((match, matchIndex) => {
+                            content += `     ${matchIndex + 1}. ${match.call} (${match.frequency}) at ${match.location}\n`;
+                            content += `        → But ${match.call} doesn't reference ${link.frequency} back\n`;
+                        });
+                    } else {
+                        content += `   → No repeaters found at ${link.linkFreq}\n`;
+                    }
+                    content += '\n';
+                });
+            }
+            
+            // Get missing location data
+            const missingLocationRepeaters = [];
+            let simplexCount = 0;
+            let sharedCount = 0;
+            let normalMissingCount = 0;
+            
+            allRepeaters.forEach(repeater => {
+                const callsign = (repeater.call || '').toLowerCase();
+                const hasLocation = repeater.lat && repeater.lon;
+                
+                if (callsign.includes('(simplex)')) {
+                    simplexCount++;
+                } else if (callsign.includes('(shared)')) {
+                    sharedCount++;
+                } else if (!hasLocation) {
+                    normalMissingCount++;
+                    missingLocationRepeaters.push({
+                        call: repeater.call,
+                        location: repeater.location || repeater.general_location || 'No location info'
+                    });
+                }
+            });
+            
+            content += '=== LOCATION DATA ANALYSIS ===\n';
+            content += `Total repeaters: ${allRepeaters.length}\n`;
+            content += `Simplex entries: ${simplexCount}\n`;
+            content += `Shared entries: ${sharedCount}\n`;
+            content += `Normal callsigns with missing location data: ${normalMissingCount}\n\n`;
+            
+            if (missingLocationRepeaters.length > 0) {
+                content += '=== NORMAL CALLSIGNS WITH MISSING LOCATION DATA ===\n';
+                missingLocationRepeaters.forEach((repeater, index) => {
+                    content += `${index + 1}. ${repeater.call} - Location: "${repeater.location}"\n`;
+                });
+            }
+            
+            statsContent.textContent = content;
+        }
+
         // Close modal when clicking outside of it
         window.onclick = function(event) {
             const helpModal = document.getElementById('helpModal');
             const exportModal = document.getElementById('exportModal');
+            const statsModal = document.getElementById('statsModal');
             if (event.target === helpModal) {
                 closeHelpModal();
             }
             if (event.target === exportModal) {
                 closeExportModal();
+            }
+            if (event.target === statsModal) {
+                closeStatsModal();
             }
         }
 
