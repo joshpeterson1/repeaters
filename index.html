@@ -1243,6 +1243,7 @@
             repeaterLinks = [];
             const linkMap = new Map(); // Track bidirectional links
             const intertieRepeaters = [];
+            const failedBidirectionalLinks = [];
             
             allRepeaters.forEach(repeater => {
                 if (!repeater.lat || !repeater.lon) return;
@@ -1279,6 +1280,16 @@
                                     linkFreq: linkFreq
                                 });
                             }
+                        } else {
+                            // Failed bidirectional validation - log for debugging
+                            failedBidirectionalLinks.push({
+                                call: repeater.call,
+                                frequency: repeater.frequency || repeater.output_frequency,
+                                location: repeater.location || repeater.general_location,
+                                linkFreq: linkFreq,
+                                targetCall: linkedRepeater.call,
+                                targetFreq: linkedRepeater.frequency || linkedRepeater.output_frequency
+                            });
                         }
                     }
                 });
@@ -1293,6 +1304,21 @@
                         type: 'intertie'
                     });
                 }
+            }
+            
+            // Debug output for failed bidirectional links
+            console.log(`=== BIDIRECTIONAL LINK VALIDATION RESULTS ===`);
+            console.log(`Total links that failed bidirectional validation: ${failedBidirectionalLinks.length}`);
+            console.log(`Successful bidirectional links: ${repeaterLinks.filter(l => l.type === 'frequency').length}`);
+            console.log(`Intertie links: ${repeaterLinks.filter(l => l.type === 'intertie').length}`);
+            
+            if (failedBidirectionalLinks.length > 0) {
+                console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
+                failedBidirectionalLinks.forEach((link, index) => {
+                    console.log(`${index + 1}. ${link.call} (${link.frequency}) at ${link.location}`);
+                    console.log(`   → Links to: ${link.linkFreq} (found ${link.targetCall} at ${link.targetFreq})`);
+                    console.log(`   → But ${link.targetCall} doesn't reference ${link.frequency} back`);
+                });
             }
             
             addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
