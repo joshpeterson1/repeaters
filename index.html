@@ -421,20 +421,25 @@
                     <div>
                         <h4 style="margin-bottom: 10px; color: #007bff;">How does this work?</h4>
                         <p style="line-height: 1.6; color: #333;">
-                            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-                        </p>
-                        <p style="line-height: 1.6; color: #333;">
-                            Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.
+                            <ol>
+                                <li>Once a week, the <a href="https://utahvhfs.org/raw_dat.html" target="_blank">raw data</a> from UVHFS is ingested (see notice <a href="https://utahvhfs.org/rptr.html" target="_blank">here</a> for info regarding why) - </li><br>
+                                <li>Any repeaters marked as offline <strong>are not</strong> ingested (does not apply to temprarily offline)</li><br>
+                                <li>Data is presented with Closed repeaters filtered out by default</li><br>
+                            </ol>
                         </p>
                     </div>
                     
                     <div style="padding-top: 15px; border-top: 1px solid #ddd;">
                         <h4 style="margin-bottom: 10px; color: #007bff;">Notes</h4>
                         <p style="line-height: 1.6; color: #333;">
-                            At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga.
+                            <u>Multi-band filtering:</u> The application includes the ability to filter by multiple bands. Use CMD/Ctrl or Shift.
                         </p>
                         <p style="line-height: 1.6; color: #333;">
-                            Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus.
+                            <u>Links:</u> In order for a link to be shown, bidrectional validation <em>must</em> pass. In other words, if repeater A references repeater B as a link, repeater B must then also reference repeater A. If this criteria is met, you'll see the link shown in 'Draw Other Links' ('other', in this case meaning 'non-IMIT'). <br>
+                            There is not a great way to handle repeaters that fail bidirectional validation <em>unless</em> there is only a single repeater on the frequency that said repeater specifies as its' link. The 'Draw Non-Validated Links' button allows you to see such links on the map. 
+                        </p>
+                        <p style="line-height: 1.6; color: #333;">
+                            <u>Cactus Intertie:</u> Becuase the Cactus Intertie is a closed system, filters for 'Draw Other Links' <em>and</em> 'Show Closed Repeaters' must be enabled.
                         </p>
                     </div>
                 </div>
