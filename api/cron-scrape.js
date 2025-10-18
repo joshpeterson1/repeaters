@@ -338,7 +338,7 @@ function saveToCsvV2(repeaters) {
         'scraper_version', 'call', 'frequency', 'output_frequency', 'input_frequency', 'offset',
         'band', 'band_name', 'location', 'site_name', 'sponsor', 'area',
         'ctcss_in', 'ctcss_out', 'dcs_code', 'lat', 'lon', 'latitude', 'longitude',
-        'elevation_feet', 'active', 'open', 'closed', 'wide_area', 'linked',
+        'elevation_feet', 'active', 'open', 'closed', 'wide_area', 'linked', 'races', 'ares',
         'emergency_power', 'coverage_area', 'notes', 'contact_email', 'repeater_web_page'
     ];
     
