@@ -529,13 +529,28 @@ function updateRepeaterLinks() {
     const linkColorMap = new Map(); // Track colors for each link pair
     let colorIndex = 0;
     
-    // Define a palette of distinct colors for links
+    // Define a palette of distinct, high-visibility colors for links
     const linkColors = [
         '#FF0000', // Red (reserved for intertie)
-        '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
-        '#FFA500', '#800080', '#008000', '#000080', '#800000',
-        '#808000', '#008080', '#C0C0C0', '#FF69B4', '#32CD32',
-        '#FFD700', '#FF4500', '#9932CC', '#00CED1', '#DC143C'
+        '#00AA00', // Dark Green (better than bright green)
+        '#0066FF', // Bright Blue
+        '#FF6600', // Orange
+        '#AA00AA', // Purple/Magenta
+        '#00AAAA', // Teal/Cyan
+        '#FFAA00', // Amber (better than yellow)
+        '#AA0000', // Dark Red
+        '#0000AA', // Dark Blue
+        '#AA6600', // Brown/Orange
+        '#6600AA', // Dark Purple
+        '#00AA66', // Teal Green
+        '#FF0066', // Pink/Red
+        '#66AA00', // Olive Green
+        '#0066AA', // Steel Blue
+        '#AA6600', // Dark Orange
+        '#6600FF', // Blue Purple
+        '#FF6600', // Red Orange
+        '#00FF66', // Spring Green
+        '#6666AA'  // Slate Blue
     ];
     
     // Combine regular repeater links with non-validated links if enabled
