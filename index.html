@@ -1260,35 +1260,49 @@
                 const linkFrequencies = extractLinkFrequencies(repeater);
                 
                 linkFrequencies.forEach(linkFreq => {
-                    // Find the linked repeater
-                    const linkedRepeater = findRepeaterByFrequency(linkFreq);
-                    if (linkedRepeater && linkedRepeater !== repeater && linkedRepeater.lat && linkedRepeater.lon) {
-                        // Check if the linked repeater also references this one (bidirectional)
-                        const reverseLinks = extractLinkFrequencies(linkedRepeater);
-                        const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
+                    // Find ALL repeaters that match this frequency
+                    const potentialMatches = findAllRepeatersByFrequency(linkFreq);
+                    const validMatches = potentialMatches.filter(match => 
+                        match !== repeater && match.lat && match.lon
+                    );
+                    
+                    if (validMatches.length > 0) {
+                        let foundBidirectionalLink = false;
                         
-                        if (reverseLinks.some(freq => Math.abs(freq - repeaterFreq) < 0.001)) {
-                            // Create a unique key for this link pair
-                            const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
+                        // Check each potential match for bidirectional validation
+                        validMatches.forEach(linkedRepeater => {
+                            const reverseLinks = extractLinkFrequencies(linkedRepeater);
+                            const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
                             
-                            if (!linkMap.has(linkKey)) {
-                                linkMap.set(linkKey, true);
-                                repeaterLinks.push({
-                                    from: repeater,
-                                    to: linkedRepeater,
-                                    type: 'frequency',
-                                    linkFreq: linkFreq
-                                });
+                            if (reverseLinks.some(freq => Math.abs(freq - repeaterFreq) < 0.001)) {
+                                // Found bidirectional link
+                                const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
+                                
+                                if (!linkMap.has(linkKey)) {
+                                    linkMap.set(linkKey, true);
+                                    repeaterLinks.push({
+                                        from: repeater,
+                                        to: linkedRepeater,
+                                        type: 'frequency',
+                                        linkFreq: linkFreq
+                                    });
+                                    foundBidirectionalLink = true;
+                                }
                             }
-                        } else {
-                            // Failed bidirectional validation - log for debugging
+                        });
+                        
+                        // If no bidirectional links found, log all the failed attempts
+                        if (!foundBidirectionalLink) {
                             failedBidirectionalLinks.push({
                                 call: repeater.call,
                                 frequency: repeater.frequency || repeater.output_frequency,
                                 location: repeater.location || repeater.general_location,
                                 linkFreq: linkFreq,
-                                targetCall: linkedRepeater.call,
-                                targetFreq: linkedRepeater.frequency || linkedRepeater.output_frequency
+                                potentialMatches: validMatches.map(match => ({
+                                    call: match.call,
+                                    frequency: match.frequency || match.output_frequency,
+                                    location: match.location || match.general_location
+                                }))
                             });
                         }
                     }
@@ -1316,8 +1330,16 @@
                 console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
                 failedBidirectionalLinks.forEach((link, index) => {
                     console.log(`${index + 1}. ${link.call} (${link.frequency}) at ${link.location}`);
-                    console.log(`   → Links to: ${link.linkFreq} (found ${link.targetCall} at ${link.targetFreq})`);
-                    console.log(`   → But ${link.targetCall} doesn't reference ${link.frequency} back`);
+                    console.log(`   → Links to: ${link.linkFreq}`);
+                    if (link.potentialMatches && link.potentialMatches.length > 0) {
+                        console.log(`   → Found ${link.potentialMatches.length} potential matches:`);
+                        link.potentialMatches.forEach((match, matchIndex) => {
+                            console.log(`     ${matchIndex + 1}. ${match.call} (${match.frequency}) at ${match.location}`);
+                            console.log(`        → But ${match.call} doesn't reference ${link.frequency} back`);
+                        });
+                    } else {
+                        console.log(`   → No repeaters found at ${link.linkFreq}`);
+                    }
                 });
             }
             
@@ -1362,6 +1384,16 @@
 
         function findRepeaterByFrequency(frequency) {
             return allRepeaters.find(repeater => {
+                const outputFreq = parseFloat(repeater.frequency || repeater.output_frequency);
+                const inputFreq = parseFloat(repeater.input_frequency);
+                
+                return Math.abs(outputFreq - frequency) < 0.001 || 
+                       Math.abs(inputFreq - frequency) < 0.001;
+            });
+        }
+
+        function findAllRepeatersByFrequency(frequency) {
+            return allRepeaters.filter(repeater => {
                 const outputFreq = parseFloat(repeater.frequency || repeater.output_frequency);
                 const inputFreq = parseFloat(repeater.input_frequency);
                 
