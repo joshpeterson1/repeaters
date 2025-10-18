@@ -118,6 +118,9 @@ function processRepeaterData(version) {
             repeater.elevation = repeater.elevation_feet || '';
             repeater.info = repeater.notes || '';
             
+            // Process internet link data
+            repeater.internet_link = formatInternetLink(repeater.internet_link || '');
+            
             // Create a combined info field with additional v2 data
             let infoItems = [];
             if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
@@ -139,6 +142,53 @@ function processRepeaterData(version) {
     
     // Update filtered repeaters as well
     filteredRepeaters = [...allRepeaters];
+}
+
+function formatInternetLink(internetLinkData) {
+    if (!internetLinkData || internetLinkData.trim() === '') {
+        return '';
+    }
+    
+    // Split by common separators and clean up
+    const parts = internetLinkData.split(/[,\/\s]+/).filter(part => part.trim() !== '');
+    const formattedParts = [];
+    
+    parts.forEach(part => {
+        const trimmedPart = part.trim();
+        
+        // Handle Echolink nodes (E followed by numbers)
+        if (/^E\d+$/.test(trimmedPart)) {
+            const nodeNumber = trimmedPart.substring(1);
+            formattedParts.push(`Echo ${nodeNumber}`);
+        }
+        // Handle IRLP nodes (I followed by numbers)
+        else if (/^I\d+$/.test(trimmedPart)) {
+            const nodeNumber = trimmedPart.substring(1);
+            formattedParts.push(`IRLP ${nodeNumber}`);
+        }
+        // Handle AllStar nodes (A followed by numbers)
+        else if (/^A\d+$/.test(trimmedPart)) {
+            formattedParts.push(`AllStar ${trimmedPart}`);
+        }
+        // Handle standalone system names (no node numbers)
+        else if (['DMR', 'D-Star', 'Mot DMR', 'P25', 'Fusion'].includes(trimmedPart)) {
+            formattedParts.push(trimmedPart);
+        }
+        // Handle DMR with node numbers (e.g., "DMR 3192979")
+        else if (/^DMR\s+\d+$/.test(trimmedPart)) {
+            formattedParts.push(trimmedPart);
+        }
+        // Skip standalone E, I, or A without numbers
+        else if (trimmedPart === 'E' || trimmedPart === 'I' || trimmedPart === 'A') {
+            // Don't add these
+        }
+        // For any other format, include as-is
+        else if (trimmedPart.length > 0) {
+            formattedParts.push(trimmedPart);
+        }
+    });
+    
+    return formattedParts.join(', ');
 }
 
 // Message display

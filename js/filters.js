@@ -211,6 +211,7 @@ function displayRepeaters() {
             distanceCell.textContent = '';
         }
         
+        row.insertCell().textContent = repeater.internet_link || '';
         row.insertCell().textContent = repeater.info || '';
     });
     

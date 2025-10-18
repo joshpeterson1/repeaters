@@ -308,6 +308,7 @@ function createPopupContent(repeater, isMultiple = false, groupIndex = 0, totalI
         <p><strong>Offset:</strong> ${repeater.offset || 'N/A'}</p>
         ${repeater.elevation ? `<p><strong>Elevation:</strong> ${repeater.elevation}</p>` : ''}
         ${repeater.distance ? `<p><strong>Distance:</strong> ${repeater.distance} miles</p>` : ''}
+        ${repeater.internet_link ? `<p><strong>Internet:</strong> ${repeater.internet_link}</p>` : ''}
         ${repeater.info ? `<p><strong>Info:</strong> ${repeater.info}</p>` : ''}
     </div>`;
     
