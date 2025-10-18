@@ -33,10 +33,9 @@ async function applyFilters() {
             return false;
         }
 
-        // Wide coverage filter - look for 'X' in info field
+        // Wide coverage filter - check wide_area column for 'Y'
         if (wideCoverageOnly) {
-            const info = (repeater.info || '').toUpperCase();
-            if (!info.includes('X')) {
+            if (repeater.wide_area !== 'Y') {
                 return false;
             }
         }
