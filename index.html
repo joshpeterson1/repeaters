@@ -1319,6 +1319,14 @@
             content += '=== BIDIRECTIONAL LINK VALIDATION RESULTS ===\n';
             content += `Successful bidirectional links: ${validatedLinks}\n`;
             content += `Non-validated single links: ${nonValidatedLinks}\n`;
+            
+            // List the actual non-validated links
+            if (window.nonValidatedLinks && window.nonValidatedLinks.length > 0) {
+                window.nonValidatedLinks.forEach((link, index) => {
+                    content += `  ${index + 1}. ${link.from.call} <> ${link.to.call}\n`;
+                });
+            }
+            
             content += `Intertie links: ${intertieLinks}\n`;
             content += `System links: ${systemLinks}\n`;
             
