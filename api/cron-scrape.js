@@ -44,7 +44,7 @@ export default async function handler(req, res) {
 async function scrapeRawRepeaterData() {
     const raw_url = "https://utahvhfs.org/rptrraw.txt";
     
-    console.log("Fetching raw repeater data from Utah VHF Society...");
+    // Fetching raw repeater data from Utah VHF Society
     
     try {
         const response = await fetch(raw_url);
@@ -108,7 +108,7 @@ async function scrapeRawRepeaterData() {
             throw new Error("Not enough CSV data found");
         }
         
-        console.log(`Found CSV data with ${lines.length} lines`);
+        // Found CSV data with ${lines.length} lines
         
         // Parse the CSV data
         const repeaters = [];
@@ -143,10 +143,7 @@ async function scrapeRawRepeaterData() {
             repeaters.push(repeater_data);
         }
         
-        console.log(`Processed ${lines.length - 1} total entries`);
-        console.log(`Active/Temp off repeaters: ${active_count}`);
-        console.log(`Inactive repeaters filtered out: ${inactive_count}`);
-        console.log(`Final dataset: ${repeaters.length} repeaters`);
+        // Processed ${lines.length - 1} total entries, ${active_count} active/temp off, ${inactive_count} filtered out
         
         return repeaters;
         
@@ -368,6 +365,6 @@ function saveToCsvV2(repeaters) {
         csv += row.join(',') + '\n';
     });
     
-    console.log(`Generated CSV for ${repeaters.length} repeaters`);
+    // Generated CSV for ${repeaters.length} repeaters
     return csv;
 }

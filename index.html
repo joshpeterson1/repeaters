@@ -1117,7 +1117,7 @@
                     .addTo(map);
             }, 500); // Delay to let the map finish flying
             
-            addDebug(`Selected repeater: ${repeater.call} on map`);
+            // Selected repeater on map
         }
 
         function clearRepeaterSelection() {
@@ -1229,45 +1229,11 @@
         }
 
         function addDebug(message) {
-            console.log(message);
+            // Debug messages disabled for production
         }
 
         function debugMissingLocationData() {
-            const missingLocationRepeaters = [];
-            let simplexCount = 0;
-            let sharedCount = 0;
-            let normalMissingCount = 0;
-            
-            allRepeaters.forEach(repeater => {
-                const callsign = (repeater.call || '').toLowerCase();
-                const hasLocation = repeater.lat && repeater.lon;
-                
-                if (callsign.includes('(simplex)')) {
-                    simplexCount++;
-                } else if (callsign.includes('(shared)')) {
-                    sharedCount++;
-                } else if (!hasLocation) {
-                    // Normal callsign with missing location data
-                    normalMissingCount++;
-                    missingLocationRepeaters.push({
-                        call: repeater.call,
-                        location: repeater.location || repeater.general_location || 'No location info'
-                    });
-                }
-            });
-            
-            console.log(`=== LOCATION DATA ANALYSIS ===`);
-            console.log(`Total repeaters: ${allRepeaters.length}`);
-            console.log(`Simplex entries: ${simplexCount}`);
-            console.log(`Shared entries: ${sharedCount}`);
-            console.log(`Normal callsigns with missing location data: ${normalMissingCount}`);
-            
-            if (missingLocationRepeaters.length > 0) {
-                console.log(`\n=== NORMAL CALLSIGNS WITH MISSING LOCATION DATA ===`);
-                missingLocationRepeaters.forEach((repeater, index) => {
-                    console.log(`${index + 1}. ${repeater.call} - Location: "${repeater.location}"`);
-                });
-            }
+            // Location data analysis available in Stats for Nerds modal
         }
 
         function toggleDebug() {
@@ -1611,9 +1577,7 @@
                             const hasReverseLink = reverseLinks.some(freq => {
                                 const freq1 = parseFloat(freq);
                                 const freq2 = parseFloat(repeaterFreq);
-                                const freqMatch = freq1 === freq2;
-                                console.log(`    parseFloat("${freq}") = ${freq1}, parseFloat("${repeaterFreq}") = ${freq2}, match: ${freqMatch}`);
-                                return freqMatch;
+                                return freq1 === freq2;
                             });
                             
                             if (hasReverseLink) {
@@ -1630,7 +1594,7 @@
                                         linkFreq: linkFreq
                                     });
                                     foundBidirectionalLink = true;
-                                    console.log(`  ✓ BIDIRECTIONAL LINK FOUND: ${repeater.call} <-> ${linkedRepeater.call}`);
+                                    // Bidirectional link found: ${repeater.call} <-> ${linkedRepeater.call}
                                 }
                             }
                         });
@@ -1650,7 +1614,7 @@
                                     type: 'non-validated',
                                     linkFreq: linkFreq
                                 });
-                                console.log(`  → NON-VALIDATED SINGLE LINK: ${repeater.call} -> ${linkedRepeater.call} (no reverse reference)`);
+                                // Non-validated single link: ${repeater.call} -> ${linkedRepeater.call}
                             }
                         }
                         
@@ -1702,38 +1666,9 @@
             // Store non-validated links globally for map rendering
             window.nonValidatedLinks = nonValidatedLinks;
             
-            // Debug output
-            console.log(`=== BIDIRECTIONAL LINK VALIDATION RESULTS ===`);
-            console.log(`Successful bidirectional links: ${repeaterLinks.filter(l => l.type === 'frequency').length}`);
-            console.log(`Non-validated single links: ${nonValidatedLinks.length}`);
-            console.log(`Intertie links: ${repeaterLinks.filter(l => l.type === 'intertie').length}`);
-            console.log(`System links: ${repeaterLinks.filter(l => l.type === 'system').length}`);
-            console.log(`Failed bidirectional attempts: ${failedBidirectionalLinks.length}`);
+            // Link validation results available in Stats for Nerds modal
             
-            // Log system breakdown
-            Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
-                const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
-                console.log(`  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links`);
-            });
-            
-            if (failedBidirectionalLinks.length > 0) {
-                console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
-                failedBidirectionalLinks.forEach((link, index) => {
-                    console.log(`${index + 1}. ${link.call} (${link.frequency}) at ${link.location}`);
-                    console.log(`   → Links to: ${link.linkFreq}`);
-                    if (link.potentialMatches && link.potentialMatches.length > 0) {
-                        console.log(`   → Found ${link.potentialMatches.length} potential matches:`);
-                        link.potentialMatches.forEach((match, matchIndex) => {
-                            console.log(`     ${matchIndex + 1}. ${match.call} (${match.frequency}) at ${match.location}`);
-                            console.log(`        → But ${match.call} doesn't reference ${link.frequency} back`);
-                        });
-                    } else {
-                        console.log(`   → No repeaters found at ${link.linkFreq}`);
-                    }
-                });
-            }
-            
-            addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
+            // Found repeater links and intertie connections
         }
 
         // Helper function to create a unique pair key
@@ -2145,7 +2080,7 @@
             const tbody = document.getElementById('repeaterTableBody');
             tbody.innerHTML = '';
 
-            addDebug(`Displaying ${filteredRepeaters.length} repeaters`);
+            // Displaying filtered repeaters
 
             filteredRepeaters.forEach((repeater, index) => {
                 const row = tbody.insertRow();
