@@ -1300,17 +1300,12 @@
 
         function extractLinkFrequencies(repeater) {
             const frequencies = [];
-            const fields = [
-                repeater.info || '',
-                repeater.notes || '',
-                repeater.link_freq || '',
-                repeater.linked || ''
-            ];
             
-            fields.forEach(field => {
-                if (!field) return;
-                
-                // Look for various link patterns
+            // Only check the link_freq field
+            const linkFreqField = repeater.link_freq || '';
+            
+            if (linkFreqField) {
+                // Look for frequency patterns in the link_freq field
                 const patterns = [
                     /L\s*(\d+\.?\d*)/gi,           // L147.12, L 146.52
                     /Link\s*(\d+\.?\d*)/gi,       // Link 447.9
@@ -1320,7 +1315,7 @@
                 
                 patterns.forEach(pattern => {
                     let match;
-                    while ((match = pattern.exec(field)) !== null) {
+                    while ((match = pattern.exec(linkFreqField)) !== null) {
                         const freq = parseFloat(match[1]);
                         // Validate frequency ranges for amateur radio
                         if ((freq >= 28 && freq <= 29.7) ||    // 10m
@@ -1334,7 +1329,7 @@
                         }
                     }
                 });
-            });
+            }
             
             return [...new Set(frequencies)]; // Remove duplicates
         }
