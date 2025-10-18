@@ -91,13 +91,36 @@ The application is modularized into several JavaScript files for better maintain
 
 The application ingests data weekly from the [Utah VHF Society raw data](https://utahvhfs.org/raw_dat.html), processing only active and temporarily offline repeaters while filtering out permanently offline ones.
 
+### API Endpoints
+
+#### **`api/data.js`** - Data Serving API
+- Serves processed repeater data from Vercel Blob storage
+- Returns JSON with repeater array, count, and last update timestamp
+- Handles CSV parsing with proper quote handling
+- Filters out inactive repeaters and processes v2 data format
+- Error handling for missing or corrupted data
+
+#### **`api/cron-scrape.js`** - Automated Data Collection
+- Weekly cron job for scraping Utah VHF Society raw data
+- Fetches data from `https://utahvhfs.org/rptrraw.txt`
+- Processes CSV data and filters active/temp-off repeaters only
+- Stores processed data to Vercel Blob storage with timestamp
+- Includes data validation and error handling
+- Requires `CRON_SECRET` environment variable for security
+
 ## Technical Architecture
 
 The application uses a modular JavaScript architecture with:
 - **Frontend**: Vanilla JavaScript with Mapbox GL JS for mapping
-- **Backend**: Node.js API endpoints for data serving
-- **Data Processing**: Automated weekly scraping and processing
-- **Storage**: Vercel Blob storage for processed data
-- **Deployment**: Vercel platform
+- **Backend**: Node.js API endpoints for data serving (`/api/data`) and automated scraping (`/api/cron-scrape`)
+- **Data Processing**: Automated weekly scraping via Vercel cron jobs
+- **Storage**: Vercel Blob storage for processed CSV data
+- **Deployment**: Vercel platform with serverless functions
+
+### Data Flow
+1. **Weekly Scraping**: `api/cron-scrape.js` fetches raw data from Utah VHF Society
+2. **Data Processing**: Filters active repeaters, processes v2 format, stores to Blob
+3. **Data Serving**: `api/data.js` serves processed data to frontend
+4. **Frontend Processing**: JavaScript modules handle filtering, mapping, and export
 
 Each JavaScript module has a specific responsibility, making the codebase maintainable and allowing for easy feature additions or modifications.
