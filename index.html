@@ -954,10 +954,29 @@
             const mappableCount = mappableRepeaters.length;
             const totalCount = filteredRepeaters.length;
             const locationCount = Object.keys(locationGroups).length;
-            const linkCount = (drawIntertieLinks || drawOtherLinks) ? repeaterLinks.filter(link => {
-                return (drawIntertieLinks && link.type === 'intertie') || 
-                       (drawOtherLinks && link.type !== 'intertie');
-            }).length : 0;
+            
+            // Count the actual links that will be rendered
+            let linkCount = 0;
+            if (drawIntertieLinks || drawOtherLinks || drawNonValidatedLinks) {
+                const allLinksToRender = [...repeaterLinks];
+                if (drawNonValidatedLinks && window.nonValidatedLinks) {
+                    allLinksToRender.push(...window.nonValidatedLinks);
+                }
+                
+                linkCount = allLinksToRender.filter(link => {
+                    // Only count links for visible repeaters
+                    const fromVisible = filteredRepeaters.includes(link.from);
+                    const toVisible = filteredRepeaters.includes(link.to);
+                    
+                    // Check if this link type should be drawn
+                    const shouldDrawLink = (link.type === 'intertie' && drawIntertieLinks) || 
+                                         ((link.type === 'frequency' || link.type === 'system') && drawOtherLinks) ||
+                                         (link.type === 'non-validated' && drawNonValidatedLinks);
+                    
+                    return fromVisible && toVisible && shouldDrawLink;
+                }).length;
+            }
+            
             mapStats.textContent = `Showing ${mappableCount} repeaters at ${locationCount} locations${linkCount > 0 ? `, ${linkCount} links` : ''} on map`;
         }
 
