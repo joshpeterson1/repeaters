@@ -1247,12 +1247,10 @@
             allRepeaters.forEach(repeater => {
                 if (!repeater.lat || !repeater.lon) return;
                 
-                // Check for intertie systems
-                const infoText = (repeater.info || '').toLowerCase();
-                const notesText = (repeater.notes || '').toLowerCase();
+                // Check for intertie systems - only check link_freq field
                 const linkFreqText = (repeater.link_freq || '').toLowerCase();
                 
-                if (infoText.includes('intertie') || notesText.includes('intertie') || linkFreqText.includes('intertie')) {
+                if (linkFreqText.includes('intertie')) {
                     intertieRepeaters.push(repeater);
                     return;
                 }
