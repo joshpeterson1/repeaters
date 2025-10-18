@@ -1569,9 +1569,7 @@
                             const reverseLinks = extractLinkFrequencies(linkedRepeater);
                             const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
                             
-                            console.log(`VALIDATION DEBUG: ${repeater.call} (${repeaterFreq}) -> ${linkedRepeater.call}`);
-                            console.log(`  Checking if ${linkedRepeater.call} links back to ${repeaterFreq}`);
-                            console.log(`  ${linkedRepeater.call} reverse links:`, reverseLinks);
+                            // Validation check: ${repeater.call} -> ${linkedRepeater.call}
                             
                             // Check if the linked repeater references back to this repeater's frequency
                             const hasReverseLink = reverseLinks.some(freq => {
