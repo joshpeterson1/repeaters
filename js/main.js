@@ -149,40 +149,85 @@ function formatInternetLink(internetLinkData) {
         return '';
     }
     
-    // Split by common separators and clean up
-    const parts = internetLinkData.split(/[,\/\s]+/).filter(part => part.trim() !== '');
+    // First, normalize common variations before processing
+    let normalizedData = internetLinkData
+        .replace(/D\s+Star/gi, 'D-Star')  // Convert "D Star" to "D-Star"
+        .replace(/Mot\s+DMR/gi, 'Mot DMR'); // Ensure "Mot DMR" stays together
+    
+    // Split by common separators (comma, slash) but be more careful with spaces
+    const parts = normalizedData.split(/[,\/]+/).map(part => part.trim()).filter(part => part !== '');
     const formattedParts = [];
     
     parts.forEach(part => {
         const trimmedPart = part.trim();
         
         // Handle Echolink nodes (E followed by numbers)
-        if (/^E\d+$/.test(trimmedPart)) {
+        if (/^E\d+$/i.test(trimmedPart)) {
             const nodeNumber = trimmedPart.substring(1);
             formattedParts.push(`Echo ${nodeNumber}`);
         }
         // Handle IRLP nodes (I followed by numbers)
-        else if (/^I\d+$/.test(trimmedPart)) {
+        else if (/^I\d+$/i.test(trimmedPart)) {
             const nodeNumber = trimmedPart.substring(1);
             formattedParts.push(`IRLP ${nodeNumber}`);
         }
         // Handle AllStar nodes (A followed by numbers)
-        else if (/^A\d+$/.test(trimmedPart)) {
+        else if (/^A\d+$/i.test(trimmedPart)) {
             formattedParts.push(`AllStar ${trimmedPart}`);
         }
-        // Handle standalone system names (no node numbers)
-        else if (['DMR', 'D-Star', 'Mot DMR', 'P25', 'Fusion'].includes(trimmedPart)) {
+        // Handle DMR with node numbers (e.g., "DMR 3192979")
+        else if (/^DMR\s+\d+$/i.test(trimmedPart)) {
             formattedParts.push(trimmedPart);
         }
-        // Handle DMR with node numbers (e.g., "DMR 3192979")
-        else if (/^DMR\s+\d+$/.test(trimmedPart)) {
-            formattedParts.push(trimmedPart);
+        // Handle standalone system names (case insensitive)
+        else if (/^DMR$/i.test(trimmedPart)) {
+            formattedParts.push('DMR');
+        }
+        else if (/^D-?Star$/i.test(trimmedPart)) {
+            formattedParts.push('D-Star');
+        }
+        else if (/^Mot\s+DMR$/i.test(trimmedPart)) {
+            formattedParts.push('Mot DMR');
+        }
+        else if (/^P25$/i.test(trimmedPart)) {
+            formattedParts.push('P25');
+        }
+        else if (/^Fusion$/i.test(trimmedPart)) {
+            formattedParts.push('Fusion');
         }
         // Skip standalone E, I, or A without numbers
-        else if (trimmedPart === 'E' || trimmedPart === 'I' || trimmedPart === 'A') {
+        else if (/^[EIA]$/i.test(trimmedPart)) {
             // Don't add these
         }
-        // For any other format, include as-is
+        // For space-separated entries within a part, split and process each
+        else if (trimmedPart.includes(' ')) {
+            const subParts = trimmedPart.split(/\s+/);
+            const subFormatted = [];
+            
+            for (let i = 0; i < subParts.length; i++) {
+                const subPart = subParts[i];
+                
+                // Handle node formats
+                if (/^E\d+$/i.test(subPart)) {
+                    subFormatted.push(`Echo ${subPart.substring(1)}`);
+                }
+                else if (/^I\d+$/i.test(subPart)) {
+                    subFormatted.push(`IRLP ${subPart.substring(1)}`);
+                }
+                else if (/^A\d+$/i.test(subPart)) {
+                    subFormatted.push(`AllStar ${subPart}`);
+                }
+                // Skip standalone letters
+                else if (!/^[EIA]$/i.test(subPart) && subPart.length > 0) {
+                    subFormatted.push(subPart);
+                }
+            }
+            
+            if (subFormatted.length > 0) {
+                formattedParts.push(subFormatted.join(' '));
+            }
+        }
+        // For any other single format, include as-is if it's not empty
         else if (trimmedPart.length > 0) {
             formattedParts.push(trimmedPart);
         }
