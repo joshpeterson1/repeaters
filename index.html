@@ -493,6 +493,10 @@
                     <input type="checkbox" id="showClosedFilter" />
                     Show Closed Repeaters
                 </label>
+                <label>
+                    <input type="checkbox" id="drawNonValidatedLinksFilter" />
+                    Draw Non-Validated Links
+                </label>
             </div>
             <button onclick="applyFilters()">Apply Filters</button>
             <button onclick="clearFilters()">Clear All</button>
@@ -559,6 +563,7 @@
         let repeaterLinks = [];
         let drawIntertieLinks = false;
         let drawOtherLinks = false;
+        let drawNonValidatedLinks = false;
         let favorites = new Set();
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
 
@@ -751,7 +756,13 @@
                             'case',
                             ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
                             ['==', ['get', 'systemType'], 'cactus'], ['literal', [1, 0]], // Solid for Cactus
+                            ['==', ['get', 'linkType'], 'non-validated'], ['literal', [5, 5]], // Longer dashes for non-validated
                             ['literal', [3, 3]] // Dashed for other links
+                        ],
+                        'line-opacity': [
+                            'case',
+                            ['==', ['get', 'linkType'], 'non-validated'], 0.3, // More transparent for non-validated
+                            0.5 // Normal opacity for other links
                         ]
                     }
                 });
@@ -928,7 +939,7 @@
             });
             
             // Update links if any are enabled
-            if (drawIntertieLinks || drawOtherLinks) {
+            if (drawIntertieLinks || drawOtherLinks || drawNonValidatedLinks) {
                 updateRepeaterLinks();
             } else {
                 // Clear links
@@ -1287,6 +1298,7 @@
             const intertieRepeaters = [];
             const systemRepeaters = {}; // Track system repeaters by type
             const failedBidirectionalLinks = [];
+            const nonValidatedLinks = []; // Track single-match failed links for optional display
             
             allRepeaters.forEach(repeater => {
                 if (!repeater.lat || !repeater.lon) return;
@@ -1347,7 +1359,7 @@
                         
                         // If no bidirectional links found, log all the failed attempts
                         if (!foundBidirectionalLink) {
-                            failedBidirectionalLinks.push({
+                            const failedLink = {
                                 call: repeater.call,
                                 frequency: repeater.frequency || repeater.output_frequency,
                                 location: repeater.location || repeater.general_location,
@@ -1357,7 +1369,19 @@
                                     frequency: match.frequency || match.output_frequency,
                                     location: match.location || match.general_location
                                 }))
-                            });
+                            };
+                            
+                            failedBidirectionalLinks.push(failedLink);
+                            
+                            // If there's exactly one match, add to non-validated links for optional display
+                            if (validMatches.length === 1) {
+                                nonValidatedLinks.push({
+                                    from: repeater,
+                                    to: validMatches[0],
+                                    type: 'non-validated',
+                                    linkFreq: linkFreq
+                                });
+                            }
                         }
                     }
                 });
@@ -1394,12 +1418,16 @@
             console.log(`Successful bidirectional links: ${repeaterLinks.filter(l => l.type === 'frequency').length}`);
             console.log(`Intertie links: ${repeaterLinks.filter(l => l.type === 'intertie').length}`);
             console.log(`System links: ${repeaterLinks.filter(l => l.type === 'system').length}`);
+            console.log(`Non-validated links (single match): ${nonValidatedLinks.length}`);
             
             // Log system breakdown
             Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
                 const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
                 console.log(`  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links`);
             });
+            
+            // Store non-validated links globally for map rendering
+            window.nonValidatedLinks = nonValidatedLinks;
             
             if (failedBidirectionalLinks.length > 0) {
                 console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
@@ -1501,14 +1529,21 @@
                 '#FFD700', '#FF4500', '#9932CC', '#00CED1', '#DC143C'
             ];
             
-            repeaterLinks.forEach(link => {
+            // Combine regular repeater links with non-validated links if enabled
+            const allLinksToRender = [...repeaterLinks];
+            if (drawNonValidatedLinks && window.nonValidatedLinks) {
+                allLinksToRender.push(...window.nonValidatedLinks);
+            }
+            
+            allLinksToRender.forEach(link => {
                 // Only show links for repeaters that are currently filtered/visible
                 const fromVisible = filteredRepeaters.includes(link.from);
                 const toVisible = filteredRepeaters.includes(link.to);
                 
                 // Check if this link type should be drawn
                 const shouldDrawLink = (link.type === 'intertie' && drawIntertieLinks) || 
-                                     ((link.type === 'frequency' || link.type === 'system') && drawOtherLinks);
+                                     ((link.type === 'frequency' || link.type === 'system') && drawOtherLinks) ||
+                                     (link.type === 'non-validated' && drawNonValidatedLinks);
                 
                 if (fromVisible && toVisible && shouldDrawLink) {
                     // Find the actual rendered coordinates for both repeaters
@@ -1528,6 +1563,14 @@
                                 'sdarc': '#FF00FF'     // Magenta for SDARC
                             };
                             linkColor = systemColors[link.systemType] || '#FFA500'; // Orange fallback
+                        } else if (link.type === 'non-validated') {
+                            // Non-validated links get unique colors from the palette
+                            const linkKey = [link.from.call, link.to.call].sort().join('-');
+                            if (!linkColorMap.has(linkKey)) {
+                                linkColorMap.set(linkKey, linkColors[colorIndex % linkColors.length]);
+                                colorIndex++;
+                            }
+                            linkColor = linkColorMap.get(linkKey);
                         } else {
                             // Frequency-based links get unique colors
                             const linkKey = [link.from.call, link.to.call].sort().join('-');
@@ -1653,6 +1696,7 @@
             const showClosed = document.getElementById('showClosedFilter').checked;
             drawIntertieLinks = document.getElementById('drawIntertieLinksFilter').checked;
             drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
+            drawNonValidatedLinks = document.getElementById('drawNonValidatedLinksFilter').checked;
 
             // Get user location if ZIP code provided
             if (zipCode && zipCode !== '') {
@@ -1739,8 +1783,10 @@
             document.getElementById('drawIntertieLinksFilter').checked = false;
             document.getElementById('drawOtherLinksFilter').checked = false;
             document.getElementById('showClosedFilter').checked = false;
+            document.getElementById('drawNonValidatedLinksFilter').checked = false;
             drawIntertieLinks = false;
             drawOtherLinks = false;
+            drawNonValidatedLinks = false;
             userLocation = null;
             
             // Clear distances
