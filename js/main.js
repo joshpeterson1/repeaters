@@ -121,7 +121,7 @@ function processRepeaterData(version) {
             // Create a combined info field with additional v2 data
             let infoItems = [];
             if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
-            if (repeater.linked === 'Y' && repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
+            if (repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
             if (repeater.races === 'Y') infoItems.push('RACES');
             if (repeater.ares === 'Y') infoItems.push('ARES');
             if (repeater.emergency_power === 'Y') infoItems.push('Emergency Power');
