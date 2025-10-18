@@ -1704,14 +1704,15 @@
             const total = allRepeaters.length;
             const filtered = filteredRepeaters.length;
             const favoritesCount = favorites.size;
+            const closedCount = allRepeaters.filter(r => r.closed === 'Y').length;
             const statsEl = document.getElementById('stats');
             
             if (total === 0) {
                 statsEl.textContent = 'No data loaded';
             } else if (filtered === total) {
-                statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites)`;
+                statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites, ${closedCount} closed)`;
             } else {
-                statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites)`;
+                statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites, ${closedCount} closed)`;
             }
         }
 
