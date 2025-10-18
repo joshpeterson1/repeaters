@@ -1705,14 +1705,16 @@
             const filtered = filteredRepeaters.length;
             const favoritesCount = favorites.size;
             const closedCount = allRepeaters.filter(r => r.closed === 'Y').length;
+            const showClosed = document.getElementById('showClosedFilter').checked;
+            const closedStatus = showClosed ? 'closed shown' : 'closed not shown';
             const statsEl = document.getElementById('stats');
             
             if (total === 0) {
                 statsEl.textContent = 'No data loaded';
             } else if (filtered === total) {
-                statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites, ${closedCount} closed)`;
+                statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites, ${closedCount} ${closedStatus})`;
             } else {
-                statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites, ${closedCount} closed)`;
+                statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites, ${closedCount} ${closedStatus})`;
             }
         }
 
