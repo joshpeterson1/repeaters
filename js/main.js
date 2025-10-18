@@ -1,22 +1,13 @@
-// Global variables
+// Global variables (non-map related)
 let allRepeaters = [];
 let filteredRepeaters = [];
 let currentSort = { column: null, direction: 'asc' };
 let userLocation = null;
 let debugInfo = [];
 let socket = null;
-let map = null;
-let mapInitialized = false;
 let currentView = 'table'; // 'table', 'map', 'both'
-let selectedRepeater = null;
-let highlightedMarker = null;
 let lastDataUpdate = null;
-let repeaterLinks = [];
-let drawIntertieLinks = false;
-let drawOtherLinks = false;
-let drawNonValidatedLinks = false;
 let favorites = new Set();
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
 
 // Utility functions
 function addDebug(message) {
