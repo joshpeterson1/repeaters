@@ -222,6 +222,8 @@ function processRawRepeaterData(row) {
     repeater.wide_area = safe_get('WIDE_AREA');
     repeater.races = safe_get('RACES');
     repeater.ares = safe_get('ARES');
+    repeater.internet = safe_get('INTERNET');
+    repeater.internet_link = safe_get('INTERNET_LINK');
     
     // Location data
     repeater.latitude = safe_get('LATITUDE');
