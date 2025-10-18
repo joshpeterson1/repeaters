@@ -193,7 +193,6 @@ function initializeMap() {
                     ['==', ['get', 'linkType'], 'intertie'], 1.5, // Thinner for intertie
                     1.5 // Thinner for regular links
                 ],
-                'line-opacity': 0.5,
                 'line-dasharray': [
                     'case',
                     ['==', ['get', 'linkType'], 'intertie'], ['literal', [1, 0]], // Solid for intertie
@@ -203,8 +202,8 @@ function initializeMap() {
                 ],
                 'line-opacity': [
                     'case',
-                    ['==', ['get', 'linkType'], 'non-validated'], 0.3, // More transparent for non-validated
-                    0.5 // Normal opacity for other links
+                    ['==', ['get', 'linkType'], 'non-validated'], 0.5, // 50% opacity for non-validated
+                    0.7 // 70% opacity for all validated links
                 ]
             }
         });
