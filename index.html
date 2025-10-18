@@ -1299,6 +1299,7 @@
             const systemRepeaters = {}; // Track system repeaters by type
             const failedBidirectionalLinks = [];
             const nonValidatedLinks = []; // Track single-match failed links for optional display
+            const processedPairs = new Set(); // Track processed pairs to avoid duplicates
             
             allRepeaters.forEach(repeater => {
                 if (!repeater.lat || !repeater.lon) return;
@@ -1329,7 +1330,8 @@
                     // Find ALL repeaters that match this frequency
                     const potentialMatches = findAllRepeatersByFrequency(linkFreq);
                     const validMatches = potentialMatches.filter(match => 
-                        match !== repeater && match.lat && match.lon
+                        match !== repeater && match.lat && match.lon && 
+                        !isSameRepeater(match, repeater) // Ensure we're not matching the same logical repeater
                     );
                     
                     if (validMatches.length > 0) {
@@ -1337,17 +1339,33 @@
                         
                         // Check each potential match for bidirectional validation
                         validMatches.forEach(linkedRepeater => {
+                            // Create a unique pair key to avoid processing the same pair twice
+                            const pairKey = createPairKey(repeater, linkedRepeater);
+                            if (processedPairs.has(pairKey)) {
+                                return; // Skip if we've already processed this pair
+                            }
+                            
                             const reverseLinks = extractLinkFrequencies(linkedRepeater);
                             const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
                             
-                            console.log(`VALIDATION DEBUG: ${repeater.call} freq=${repeaterFreq}, ${linkedRepeater.call} reverseLinks=`, reverseLinks, 'comparison results:', reverseLinks.map(freq => `${freq} === ${repeaterFreq} = ${parseFloat(freq) === repeaterFreq}`));
+                            console.log(`VALIDATION DEBUG: ${repeater.call} (${repeaterFreq}) -> ${linkedRepeater.call}`);
+                            console.log(`  Checking if ${linkedRepeater.call} links back to ${repeaterFreq}`);
+                            console.log(`  ${linkedRepeater.call} reverse links:`, reverseLinks);
                             
-                            if (reverseLinks.some(freq => parseFloat(freq) === repeaterFreq)) {
+                            // Check if the linked repeater references back to this repeater's frequency
+                            const hasReverseLink = reverseLinks.some(freq => {
+                                const freqMatch = parseFloat(freq) === parseFloat(repeaterFreq);
+                                console.log(`    ${freq} matches ${repeaterFreq}? ${freqMatch}`);
+                                return freqMatch;
+                            });
+                            
+                            if (hasReverseLink) {
                                 // Found bidirectional link
                                 const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
                                 
                                 if (!linkMap.has(linkKey)) {
                                     linkMap.set(linkKey, true);
+                                    processedPairs.add(pairKey);
                                     repeaterLinks.push({
                                         from: repeater,
                                         to: linkedRepeater,
@@ -1355,11 +1373,31 @@
                                         linkFreq: linkFreq
                                     });
                                     foundBidirectionalLink = true;
+                                    console.log(`  ✓ BIDIRECTIONAL LINK FOUND: ${repeater.call} <-> ${linkedRepeater.call}`);
                                 }
                             }
                         });
                         
-                        // If no bidirectional links found, log all the failed attempts
+                        // If no bidirectional links found, check for non-validated single match
+                        if (!foundBidirectionalLink && validMatches.length === 1) {
+                            const linkedRepeater = validMatches[0];
+                            const pairKey = createPairKey(repeater, linkedRepeater);
+                            
+                            // Only add if this pair isn't already in validated links and hasn't been processed
+                            const linkKey = [repeater.call, linkedRepeater.call].sort().join('-');
+                            if (!linkMap.has(linkKey) && !processedPairs.has(pairKey)) {
+                                processedPairs.add(pairKey);
+                                nonValidatedLinks.push({
+                                    from: repeater,
+                                    to: linkedRepeater,
+                                    type: 'non-validated',
+                                    linkFreq: linkFreq
+                                });
+                                console.log(`  → NON-VALIDATED SINGLE LINK: ${repeater.call} -> ${linkedRepeater.call} (no reverse reference)`);
+                            }
+                        }
+                        
+                        // Log failed bidirectional attempts for debugging
                         if (!foundBidirectionalLink) {
                             const failedLink = {
                                 call: repeater.call,
@@ -1374,21 +1412,6 @@
                             };
                             
                             failedBidirectionalLinks.push(failedLink);
-                            
-                            // If there's exactly one match, add to non-validated links for optional display
-                            if (validMatches.length === 1) {
-                                const linkKey = [repeater.call, validMatches[0].call].sort().join('-');
-                                
-                                // Only add if this pair isn't already in validated links
-                                if (!linkMap.has(linkKey)) {
-                                    nonValidatedLinks.push({
-                                        from: repeater,
-                                        to: validMatches[0],
-                                        type: 'non-validated',
-                                        linkFreq: linkFreq
-                                    });
-                                }
-                            }
                         }
                     }
                 });
@@ -1419,22 +1442,22 @@
                 }
             });
             
-            // Debug output for failed bidirectional links
+            // Store non-validated links globally for map rendering
+            window.nonValidatedLinks = nonValidatedLinks;
+            
+            // Debug output
             console.log(`=== BIDIRECTIONAL LINK VALIDATION RESULTS ===`);
-            console.log(`Total links that failed bidirectional validation: ${failedBidirectionalLinks.length}`);
             console.log(`Successful bidirectional links: ${repeaterLinks.filter(l => l.type === 'frequency').length}`);
+            console.log(`Non-validated single links: ${nonValidatedLinks.length}`);
             console.log(`Intertie links: ${repeaterLinks.filter(l => l.type === 'intertie').length}`);
             console.log(`System links: ${repeaterLinks.filter(l => l.type === 'system').length}`);
-            console.log(`Non-validated links (single match): ${nonValidatedLinks.length}`);
+            console.log(`Failed bidirectional attempts: ${failedBidirectionalLinks.length}`);
             
             // Log system breakdown
             Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
                 const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
                 console.log(`  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links`);
             });
-            
-            // Store non-validated links globally for map rendering
-            window.nonValidatedLinks = nonValidatedLinks;
             
             if (failedBidirectionalLinks.length > 0) {
                 console.log(`\n=== FAILED BIDIRECTIONAL LINKS ===`);
@@ -1454,6 +1477,25 @@
             }
             
             addDebug(`Found ${repeaterLinks.length} repeater links (${intertieRepeaters.length} intertie repeaters)`);
+        }
+
+        // Helper function to check if two repeaters are the same logical repeater
+        function isSameRepeater(repeater1, repeater2) {
+            // Check if they have the same call sign and frequency
+            const call1 = (repeater1.call || '').trim();
+            const call2 = (repeater2.call || '').trim();
+            const freq1 = parseFloat(repeater1.frequency || repeater1.output_frequency || 0);
+            const freq2 = parseFloat(repeater2.frequency || repeater2.output_frequency || 0);
+            
+            return call1 === call2 && freq1 === freq2;
+        }
+
+        // Helper function to create a unique pair key
+        function createPairKey(repeater1, repeater2) {
+            // Create a unique key for this pair that's consistent regardless of order
+            const id1 = `${repeater1.call}-${repeater1.frequency || repeater1.output_frequency}`;
+            const id2 = `${repeater2.call}-${repeater2.frequency || repeater2.output_frequency}`;
+            return [id1, id2].sort().join('<->');
         }
 
         function getSystemType(linkFreqText) {
