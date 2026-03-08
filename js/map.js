@@ -1,5 +1,4 @@
 // Map-related functionality
-let highlightedMarker = null;
 // Public Mapbox client token — scoped by domain restrictions in the Mapbox dashboard.
 // These tokens are designed to be embedded in frontend code; no .env or API proxy needed.
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
@@ -311,7 +310,7 @@ function createPopupContent(repeater, isMultiple = false, groupIndex = 0, totalI
 
 // Escape HTML special characters for safe interpolation into HTML strings
 function escapeHTML(str) {
-    if (str == null) return '';
+    if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, function(c) {
         switch (c) {
             case '&': return '&amp;';
@@ -557,7 +556,6 @@ function updateRepeaterLinks() {
     const linkFeatures = [];
     const linkColorMap = new Map();
     let colorIndex = 0;
-    const linkColors = LINK_COLORS;
 
     // Combine regular repeater links with non-validated links if enabled
     const allLinksToRender = [...AppState.repeaterLinks];

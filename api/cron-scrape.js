@@ -158,7 +158,7 @@ function processRawRepeaterData(row) {
     // Helper function to safely get and strip values
     function safe_get(key, defaultValue = '') {
         const value = row[key];
-        return value != null ? value.trim() : defaultValue;
+        return value !== null && value !== undefined ? value.trim() : defaultValue;
     }
     
     // Map the raw CSV fields to cleaner field names

@@ -86,7 +86,7 @@ function processRepeaterData() {
         repeater.internet_link = formatInternetLink(repeater.internet_link || '');
 
         // Create a combined info field with additional v2 data
-        let infoItems = [];
+        const infoItems = [];
         if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
         if (repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
         if (repeater.races === 'Y') infoItems.push('RACES');
@@ -109,7 +109,7 @@ function formatInternetLink(internetLinkData) {
     }
 
     // First, normalize common variations before processing
-    let normalizedData = internetLinkData
+    const normalizedData = internetLinkData
         .replace(/D\s+Star/gi, 'D-Star')  // Convert "D Star" to "D-Star"
         .replace(/Mot\s+DMR/gi, 'Mot DMR'); // Ensure "Mot DMR" stays together
 

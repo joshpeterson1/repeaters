@@ -170,7 +170,7 @@ function displayRepeaters() {
     const tbody = document.getElementById('repeaterTableBody');
     tbody.innerHTML = '';
 
-    AppState.filteredRepeaters.forEach((repeater, index) => {
+    AppState.filteredRepeaters.forEach(repeater => {
         const row = createRepeaterRow(repeater);
         tbody.appendChild(row);
     });
