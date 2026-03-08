@@ -1,12 +1,3 @@
-// Global variables (non-map related)
-let allRepeaters = [];
-let filteredRepeaters = [];
-let currentSort = { column: null, direction: 'asc' };
-let userLocation = null;
-let currentView = 'table'; // 'table', 'map', 'both'
-let lastDataUpdate = null;
-let favorites = new Set();
-
 // Utility functions
 function getBand(frequency) {
     const freq = parseFloat(frequency);
@@ -52,29 +43,29 @@ function loadData() {
         if (data.error) {
             showMessage(data.error, 'error');
         } else {
-            allRepeaters = data.repeaters;
-            filteredRepeaters = [...allRepeaters];
-            
+            AppState.allRepeaters = data.repeaters;
+            AppState.filteredRepeaters = [...AppState.allRepeaters];
+
             processRepeaterData();
-            
+
             displayRepeaters();
             updateStats();
-            
-            if (currentView !== 'table') {
+
+            if (AppState.currentView !== 'table') {
                 updateMapData();
             }
-            
+
             // Apply default filter to hide closed repeaters
             applyFilters();
 
             // Store the last update time
-            lastDataUpdate = data.last_updated;
-            
+            AppState.lastDataUpdate = data.last_updated;
+
             // Update last updated time
             const lastUpdated = document.getElementById('lastUpdated');
             const updateTime = new Date(data.last_updated).toLocaleString();
             lastUpdated.textContent = `Data updated weekly via automated scraping. Last update: ${updateTime}`;
-            
+
             showMessage(`Loaded ${data.count} repeaters`, 'success');
         }
     })
@@ -84,7 +75,7 @@ function loadData() {
 }
 
 function processRepeaterData() {
-    allRepeaters.forEach(repeater => {
+    AppState.allRepeaters.forEach(repeater => {
         // Map v2 fields to expected frontend fields
         repeater.general_location = repeater.location || repeater.general_location || '';
         repeater.ctcss = repeater.ctcss_in || repeater.ctcss_out || '';
@@ -104,31 +95,31 @@ function processRepeaterData() {
         if (repeater.autopatch === 'Y') infoItems.push('Autopatch');
         repeater.info = infoItems.join(', ');
     });
-    
+
     // Parse and build repeater links
     parseRepeaterLinks();
-    
+
     // Update filtered repeaters as well
-    filteredRepeaters = [...allRepeaters];
+    AppState.filteredRepeaters = [...AppState.allRepeaters];
 }
 
 function formatInternetLink(internetLinkData) {
     if (!internetLinkData || internetLinkData.trim() === '') {
         return '';
     }
-    
+
     // First, normalize common variations before processing
     let normalizedData = internetLinkData
         .replace(/D\s+Star/gi, 'D-Star')  // Convert "D Star" to "D-Star"
         .replace(/Mot\s+DMR/gi, 'Mot DMR'); // Ensure "Mot DMR" stays together
-    
+
     // Split by common separators (comma, slash) but be more careful with spaces
     const parts = normalizedData.split(/[,\/]+/).map(part => part.trim()).filter(part => part !== '');
     const formattedParts = [];
-    
+
     parts.forEach(part => {
         const trimmedPart = part.trim();
-        
+
         // Handle Echolink nodes (E followed by numbers)
         if (/^E\d+$/i.test(trimmedPart)) {
             const nodeNumber = trimmedPart.substring(1);
@@ -172,10 +163,10 @@ function formatInternetLink(internetLinkData) {
         else if (trimmedPart.includes(' ')) {
             const subParts = trimmedPart.split(/\s+/);
             const subFormatted = [];
-            
+
             for (let i = 0; i < subParts.length; i++) {
                 const subPart = subParts[i];
-                
+
                 // Handle node formats
                 if (/^E\d+$/i.test(subPart)) {
                     subFormatted.push(`Echo ${subPart.substring(1)}`);
@@ -191,7 +182,7 @@ function formatInternetLink(internetLinkData) {
                     subFormatted.push(subPart);
                 }
             }
-            
+
             if (subFormatted.length > 0) {
                 formattedParts.push(subFormatted.join(' '));
             }
@@ -201,7 +192,7 @@ function formatInternetLink(internetLinkData) {
             formattedParts.push(trimmedPart);
         }
     });
-    
+
     return formattedParts.join(', ');
 }
 
@@ -215,10 +206,10 @@ function showMessage(message, type) {
     const messageDiv = document.createElement('div');
     messageDiv.className = type;
     messageDiv.textContent = message;
-    
+
     const container = document.querySelector('.container');
     container.insertBefore(messageDiv, container.children[1]);
-    
+
     setTimeout(() => {
         messageDiv.remove();
     }, 5000);
@@ -234,35 +225,35 @@ function loadFavorites() {
     try {
         const savedFavorites = localStorage.getItem(FAVORITES_KEY);
         if (savedFavorites) {
-            favorites = new Set(JSON.parse(savedFavorites));
+            AppState.favorites = new Set(JSON.parse(savedFavorites));
         }
     } catch (error) {
         console.error('Error loading favorites:', error);
-        favorites = new Set();
+        AppState.favorites = new Set();
     }
 }
 
 function saveFavorites() {
     try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...AppState.favorites]));
     } catch (error) {
         console.error('Error saving favorites:', error);
     }
 }
 
 function toggleFavorite(repeaterId, starElement) {
-    if (favorites.has(repeaterId)) {
-        favorites.delete(repeaterId);
+    if (AppState.favorites.has(repeaterId)) {
+        AppState.favorites.delete(repeaterId);
         starElement.classList.remove('favorited');
         starElement.title = 'Add to favorites';
         showMessage('Removed from favorites', 'success');
     } else {
-        favorites.add(repeaterId);
+        AppState.favorites.add(repeaterId);
         starElement.classList.add('favorited');
         starElement.title = 'Remove from favorites';
         showMessage('Added to favorites', 'success');
     }
-    
+
     saveFavorites();
     updateStats();
 }
@@ -275,23 +266,23 @@ function toggleFavoriteFromPopup(repeaterId, starElement) {
 
 // View management
 function showTableView() {
-    currentView = 'table';
+    AppState.currentView = 'table';
     document.getElementById('mapContainer').style.display = 'none';
     document.getElementById('repeaterTable').parentElement.style.display = 'block';
-    
+
     document.getElementById('tableViewBtn').classList.add('active');
     document.getElementById('mapViewBtn').classList.remove('active');
     document.getElementById('bothViewBtn').classList.remove('active');
-    
+
     clearRepeaterSelection();
 }
 
 function showMapView() {
-    currentView = 'map';
+    AppState.currentView = 'map';
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'none';
-    
-    if (!mapInitialized) {
+
+    if (!AppState.mapInitialized) {
         initializeMap();
         // Wait a bit for map to initialize, then update data
         setTimeout(() => {
@@ -301,26 +292,26 @@ function showMapView() {
     } else {
         // Resize map first, then update data
         setTimeout(() => {
-            if (map) {
-                map.resize();
+            if (AppState.map) {
+                AppState.map.resize();
                 updateMapData();
             }
         }, 100);
     }
-    
+
     document.getElementById('tableViewBtn').classList.remove('active');
     document.getElementById('mapViewBtn').classList.add('active');
     document.getElementById('bothViewBtn').classList.remove('active');
-    
+
     clearRepeaterSelection();
 }
 
 function showBothViews() {
-    currentView = 'both';
+    AppState.currentView = 'both';
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'block';
-    
-    if (!mapInitialized) {
+
+    if (!AppState.mapInitialized) {
         initializeMap();
         setTimeout(() => {
             updateMapData();
@@ -329,13 +320,13 @@ function showBothViews() {
     } else {
         // Resize map first, then update data
         setTimeout(() => {
-            if (map) {
-                map.resize();
+            if (AppState.map) {
+                AppState.map.resize();
                 updateMapData();
             }
         }, 100);
     }
-    
+
     document.getElementById('tableViewBtn').classList.remove('active');
     document.getElementById('mapViewBtn').classList.remove('active');
     document.getElementById('bothViewBtn').classList.add('active');
@@ -345,23 +336,23 @@ function showBothViews() {
 function toggleFullscreen() {
     const mapContainer = document.getElementById('mapContainer');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
-    
+
     if (mapContainer.classList.contains('fullscreen')) {
         // Exit fullscreen
         mapContainer.classList.remove('fullscreen');
-        fullscreenBtn.innerHTML = '⛶';
+        fullscreenBtn.innerHTML = '\u26F6';
         fullscreenBtn.title = 'Toggle Fullscreen';
     } else {
         // Enter fullscreen
         mapContainer.classList.add('fullscreen');
-        fullscreenBtn.innerHTML = '✕';
+        fullscreenBtn.innerHTML = '\u2715';
         fullscreenBtn.title = 'Exit Fullscreen';
     }
-    
+
     // Resize map after transition
     setTimeout(() => {
-        if (map) {
-            map.resize();
+        if (AppState.map) {
+            AppState.map.resize();
         }
     }, 100);
 }

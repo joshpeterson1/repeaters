@@ -192,18 +192,18 @@
             <table id="repeaterTable">
                 <thead>
                     <tr>
-                        <th style="width: 40px;">★</th>
-                        <th onclick="sortTable('frequency')">Frequency</th>
-                        <th onclick="sortTable('call')">Call</th>
-                        <th onclick="sortTable('general_location')">Location</th>
-                        <th onclick="sortTable('site_name')">Site</th>
-                        <th onclick="sortTable('sponsor')">Sponsor</th>
-                        <th onclick="sortTable('ctcss')">CTCSS</th>
-                        <th onclick="sortTable('offset')">Offset</th>
-                        <th onclick="sortTable('elevation')">Elevation</th>
-                        <th onclick="sortTable('distance')">Distance</th>
-                        <th onclick="sortTable('internet_link')">Internet</th>
-                        <th onclick="sortTable('info')">Info</th>
+                        <th style="width: 40px;">&#9733;</th>
+                        <th data-sort="frequency" onclick="sortTable('frequency')">Frequency</th>
+                        <th data-sort="call" onclick="sortTable('call')">Call</th>
+                        <th data-sort="general_location" onclick="sortTable('general_location')">Location</th>
+                        <th data-sort="site_name" onclick="sortTable('site_name')">Site</th>
+                        <th data-sort="sponsor" onclick="sortTable('sponsor')">Sponsor</th>
+                        <th data-sort="ctcss" onclick="sortTable('ctcss')">CTCSS</th>
+                        <th data-sort="offset" onclick="sortTable('offset')">Offset</th>
+                        <th data-sort="elevation" onclick="sortTable('elevation')">Elevation</th>
+                        <th data-sort="distance" onclick="sortTable('distance')">Distance</th>
+                        <th data-sort="internet_link" onclick="sortTable('internet_link')">Internet</th>
+                        <th data-sort="info" onclick="sortTable('info')">Info</th>
                     </tr>
                 </thead>
                 <tbody id="repeaterTableBody">
@@ -213,6 +213,7 @@
     </div>
 
     <script src='js/constants.js'></script>
+    <script src='js/state.js'></script>
     <script src='js/main.js'></script>
     <script src='js/map.js'></script>
     <script src='js/filters.js'></script>
@@ -228,7 +229,7 @@
             rowElement.classList.add('selected');
             
             // If map is visible, show on map
-            if (currentView !== 'table') {
+            if (AppState.currentView !== 'table') {
                 selectRepeaterOnMap(repeater);
             } else {
                 // If only table view, switch to both view to show on map
@@ -278,18 +279,18 @@
             let content = '';
             
             // Get bidirectional link validation results
-            const validatedLinks = repeaterLinks.filter(l => l.type === 'frequency').length;
-            const nonValidatedLinks = window.nonValidatedLinks ? window.nonValidatedLinks.length : 0;
-            const intertieLinks = repeaterLinks.filter(l => l.type === 'intertie').length;
-            const systemLinks = repeaterLinks.filter(l => l.type === 'system').length;
+            const validatedLinks = AppState.repeaterLinks.filter(l => l.type === 'frequency').length;
+            const nonValidatedLinksCount = AppState.nonValidatedLinks.length;
+            const intertieLinks = AppState.repeaterLinks.filter(l => l.type === 'intertie').length;
+            const systemLinks = AppState.repeaterLinks.filter(l => l.type === 'system').length;
             
             content += '=== BIDIRECTIONAL LINK VALIDATION RESULTS ===\n';
             content += `Successful bidirectional links: ${validatedLinks}\n`;
-            content += `Non-validated single links: ${nonValidatedLinks}\n`;
-            
+            content += `Non-validated single links: ${nonValidatedLinksCount}\n`;
+
             // List the actual non-validated links
-            if (window.nonValidatedLinks && window.nonValidatedLinks.length > 0) {
-                window.nonValidatedLinks.forEach((link, index) => {
+            if (AppState.nonValidatedLinks.length > 0) {
+                AppState.nonValidatedLinks.forEach((link, index) => {
                     content += `  ${index + 1}. ${link.from.call} <> ${link.to.call}\n`;
                 });
             }
@@ -299,7 +300,7 @@
             
             // Get system breakdown
             const systemRepeaters = {};
-            allRepeaters.forEach(repeater => {
+            AppState.allRepeaters.forEach(repeater => {
                 const linkFreqText = (repeater.link_freq || '').toLowerCase();
                 const systemType = getSystemType(linkFreqText);
                 if (systemType) {
@@ -317,7 +318,7 @@
             
             // Get failed bidirectional links
             const failedBidirectionalLinks = [];
-            allRepeaters.forEach(repeater => {
+            AppState.allRepeaters.forEach(repeater => {
                 if (!repeater.lat || !repeater.lon) return;
                 
                 const linkFrequencies = extractLinkFrequencies(repeater);
@@ -389,7 +390,7 @@
             let sharedCount = 0;
             let normalMissingCount = 0;
             
-            allRepeaters.forEach(repeater => {
+            AppState.allRepeaters.forEach(repeater => {
                 const callsign = (repeater.call || '').toLowerCase();
                 const hasLocation = repeater.lat && repeater.lon;
                 
@@ -407,7 +408,7 @@
             });
             
             content += '=== LOCATION DATA ANALYSIS ===\n';
-            content += `Total repeaters: ${allRepeaters.length}\n`;
+            content += `Total repeaters: ${AppState.allRepeaters.length}\n`;
             content += `Simplex entries: ${simplexCount}\n`;
             content += `Shared entries: ${sharedCount}\n`;
             content += `Normal callsigns missing precision location data: ${normalMissingCount}\n\n`;

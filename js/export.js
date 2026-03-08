@@ -1,12 +1,12 @@
 // Export functionality for various formats
 
 function exportKML() {
-    if (filteredRepeaters.length === 0) {
+    if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
     }
 
-    const kml = generateKML(filteredRepeaters);
+    const kml = generateKML(AppState.filteredRepeaters);
     const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
     const url = URL.createObjectURL(blob);
     
@@ -18,17 +18,17 @@ function exportKML() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showMessage(`Exported ${filteredRepeaters.length} repeaters to KML`, 'success');
+    showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to KML`, 'success');
     closeExportModal();
 }
 
 function exportCSV() {
-    if (filteredRepeaters.length === 0) {
+    if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
     }
 
-    const csv = generateCSV(filteredRepeaters);
+    const csv = generateCSV(AppState.filteredRepeaters);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
@@ -40,17 +40,17 @@ function exportCSV() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showMessage(`Exported ${filteredRepeaters.length} repeaters to CSV`, 'success');
+    showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to CSV`, 'success');
     closeExportModal();
 }
 
 function exportKX3() {
-    if (filteredRepeaters.length === 0) {
+    if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
     }
 
-    const kx3xml = generateKX3XML(filteredRepeaters);
+    const kx3xml = generateKX3XML(AppState.filteredRepeaters);
     const blob = new Blob([kx3xml], { type: 'application/xml;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
@@ -62,17 +62,17 @@ function exportKX3() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showMessage(`Exported ${filteredRepeaters.length} repeaters to KX3 format`, 'success');
+    showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to KX3 format`, 'success');
     closeExportModal();
 }
 
 function exportChirp() {
-    if (filteredRepeaters.length === 0) {
+    if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
     }
 
-    const chirpCsv = generateChirpCSV(filteredRepeaters);
+    const chirpCsv = generateChirpCSV(AppState.filteredRepeaters);
     const blob = new Blob([chirpCsv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
@@ -84,7 +84,7 @@ function exportChirp() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showMessage(`Exported ${filteredRepeaters.length} repeaters to CHIRP format`, 'success');
+    showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to CHIRP format`, 'success');
     closeExportModal();
 }
 

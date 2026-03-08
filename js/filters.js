@@ -9,9 +9,9 @@ async function applyFilters() {
     const wideCoverageOnly = document.getElementById('wideCoverageFilter').checked;
     const showFavoritesOnly = document.getElementById('showFavoritesOnly').checked;
     const showClosed = document.getElementById('showClosedFilter').checked;
-    drawIntertieLinks = document.getElementById('drawIntertieLinksFilter').checked;
-    drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
-    drawNonValidatedLinks = document.getElementById('drawNonValidatedLinksFilter').checked;
+    AppState.drawIntertieLinks = document.getElementById('drawIntertieLinksFilter').checked;
+    AppState.drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
+    AppState.drawNonValidatedLinks = document.getElementById('drawNonValidatedLinksFilter').checked;
 
     // Validate ZIP code format
     if (zipCode && !/^\d{5}$/.test(zipCode)) {
@@ -21,14 +21,14 @@ async function applyFilters() {
 
     // Get user location if ZIP code provided
     if (zipCode && zipCode !== '') {
-        userLocation = await getLocationFromZip(zipCode);
-        if (!userLocation) {
+        AppState.userLocation = await getLocationFromZip(zipCode);
+        if (!AppState.userLocation) {
             showMessage('Could not find location for ZIP code: ' + zipCode, 'error');
             return;
         }
     }
 
-    filteredRepeaters = allRepeaters.filter(repeater => {
+    AppState.filteredRepeaters = AppState.allRepeaters.filter(repeater => {
         // Band filter - check if any selected bands match
         if (selectedBands.length > 0 && !selectedBands.includes(getBand(repeater.frequency))) {
             return false;
@@ -49,7 +49,7 @@ async function applyFilters() {
         // Favorites filter
         if (showFavoritesOnly) {
             const repeaterId = getRepeaterId(repeater);
-            if (!favorites.has(repeaterId)) {
+            if (!AppState.favorites.has(repeaterId)) {
                 return false;
             }
         }
@@ -60,16 +60,16 @@ async function applyFilters() {
         }
 
         // Distance filter
-        if (maxDistance && userLocation && repeater.lat && repeater.lon) {
-            const distance = calculateDistance(userLocation.lat, userLocation.lon, repeater.lat, repeater.lon);
+        if (maxDistance && AppState.userLocation && repeater.lat && repeater.lon) {
+            const distance = calculateDistance(AppState.userLocation.lat, AppState.userLocation.lon, repeater.lat, repeater.lon);
             repeater.distance = distance.toFixed(1);
             if (distance > parseFloat(maxDistance)) {
                 return false;
             }
-        } else if (userLocation && repeater.lat && repeater.lon) {
-            const distance = calculateDistance(userLocation.lat, userLocation.lon, repeater.lat, repeater.lon);
+        } else if (AppState.userLocation && repeater.lat && repeater.lon) {
+            const distance = calculateDistance(AppState.userLocation.lat, AppState.userLocation.lon, repeater.lat, repeater.lon);
             repeater.distance = distance.toFixed(1);
-        } else if (userLocation) {
+        } else if (AppState.userLocation) {
             // Set distance based on callsign type
             const callsign = (repeater.call || '').toLowerCase();
             if (callsign.includes('(simplex)') || callsign.includes('(shared)')) {
@@ -84,9 +84,9 @@ async function applyFilters() {
 
     displayRepeaters();
     updateStats();
-    
+
     // Update map if visible
-    if (currentView !== 'table') {
+    if (AppState.currentView !== 'table') {
         updateMapData();
     }
 }
@@ -104,34 +104,34 @@ function clearFilters() {
     document.getElementById('drawOtherLinksFilter').checked = false;
     document.getElementById('showClosedFilter').checked = false;
     document.getElementById('drawNonValidatedLinksFilter').checked = false;
-    drawIntertieLinks = false;
-    drawOtherLinks = false;
-    drawNonValidatedLinks = false;
-    userLocation = null;
-    
+    AppState.drawIntertieLinks = false;
+    AppState.drawOtherLinks = false;
+    AppState.drawNonValidatedLinks = false;
+    AppState.userLocation = null;
+
     // Clear distances
-    allRepeaters.forEach(repeater => {
+    AppState.allRepeaters.forEach(repeater => {
         delete repeater.distance;
     });
-    
-    filteredRepeaters = [...allRepeaters];
+
+    AppState.filteredRepeaters = [...AppState.allRepeaters];
     displayRepeaters();
     updateStats();
-    
+
     // Hide center user button
     document.getElementById('centerUserBtn').style.display = 'none';
     updateMapData();
 }
 
 function sortTable(column) {
-    if (currentSort.column === column) {
-        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    if (AppState.currentSort.column === column) {
+        AppState.currentSort.direction = AppState.currentSort.direction === 'asc' ? 'desc' : 'asc';
     } else {
-        currentSort.column = column;
-        currentSort.direction = 'asc';
+        AppState.currentSort.column = column;
+        AppState.currentSort.direction = 'asc';
     }
 
-    filteredRepeaters.sort((a, b) => {
+    AppState.filteredRepeaters.sort((a, b) => {
         let aVal = a[column] || '';
         let bVal = b[column] || '';
 
@@ -144,8 +144,8 @@ function sortTable(column) {
             bVal = bVal.toString().toLowerCase();
         }
 
-        if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+        if (aVal < bVal) return AppState.currentSort.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return AppState.currentSort.direction === 'asc' ? 1 : -1;
         return 0;
     });
 
@@ -157,11 +157,11 @@ function updateSortHeaders() {
     document.querySelectorAll('th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    
-    if (currentSort.column) {
-        const th = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
+
+    if (AppState.currentSort.column) {
+        const th = document.querySelector(`th[data-sort="${AppState.currentSort.column}"]`);
         if (th) {
-            th.classList.add(`sort-${currentSort.direction}`);
+            th.classList.add(`sort-${AppState.currentSort.direction}`);
         }
     }
 }
@@ -170,69 +170,74 @@ function displayRepeaters() {
     const tbody = document.getElementById('repeaterTableBody');
     tbody.innerHTML = '';
 
-    // Displaying filtered repeaters
-
-    filteredRepeaters.forEach((repeater, index) => {
-        const row = tbody.insertRow();
-        
-        // Make row clickable (except for the star cell)
-        row.classList.add('table-row-clickable');
-        row.title = 'Click to show on map';
-        row.addEventListener('click', (e) => {
-            // Don't trigger row click if clicking on the star
-            if (!e.target.classList.contains('favorite-star')) {
-                handleRowClick(repeater, row);
-            }
-        });
-        
-        // Add favorite star cell
-        const starCell = row.insertCell();
-        const repeaterId = getRepeaterId(repeater);
-        const isFavorited = favorites.has(repeaterId);
-        starCell.innerHTML = `<span class="favorite-star ${isFavorited ? 'favorited' : ''}" 
-            onclick="toggleFavorite('${repeaterId}', this)" 
-            title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">★</span>`;
-        
-        const freqCell = row.insertCell();
-        freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
-        
-        const callCell = row.insertCell();
-        callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
-        
-        row.insertCell().textContent = repeater.location || repeater.general_location || '';
-        row.insertCell().textContent = repeater.site_name || '';
-        row.insertCell().textContent = repeater.sponsor || '';
-        row.insertCell().textContent = repeater.ctcss || '';
-        row.insertCell().textContent = repeater.offset || '';
-        row.insertCell().textContent = repeater.elevation || '';
-        
-        const distanceCell = row.insertCell();
-        if (repeater.distance) {
-            if (repeater.distance === 'None' || repeater.distance === 'N/A') {
-                distanceCell.textContent = repeater.distance;
-            } else {
-                distanceCell.innerHTML = `<span class="distance">${repeater.distance} mi</span>`;
-            }
-        } else {
-            distanceCell.textContent = '';
-        }
-        
-        row.insertCell().textContent = repeater.internet_link || '';
-        row.insertCell().textContent = repeater.info || '';
+    AppState.filteredRepeaters.forEach((repeater, index) => {
+        const row = createRepeaterRow(repeater);
+        tbody.appendChild(row);
     });
-    
-    if (currentView !== 'table') updateMapData();
+
+    if (AppState.currentView !== 'table') updateMapData();
+}
+
+function createRepeaterRow(repeater) {
+    const row = document.createElement('tr');
+
+    // Make row clickable (except for the star cell)
+    row.classList.add('table-row-clickable');
+    row.title = 'Click to show on map';
+    row.addEventListener('click', (e) => {
+        // Don't trigger row click if clicking on the star
+        if (!e.target.classList.contains('favorite-star')) {
+            handleRowClick(repeater, row);
+        }
+    });
+
+    // Add favorite star cell
+    const starCell = row.insertCell();
+    const repeaterId = getRepeaterId(repeater);
+    const isFavorited = AppState.favorites.has(repeaterId);
+    starCell.innerHTML = `<span class="favorite-star ${isFavorited ? 'favorited' : ''}"
+        onclick="toggleFavorite('${repeaterId}', this)"
+        title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}">&#9733;</span>`;
+
+    const freqCell = row.insertCell();
+    freqCell.innerHTML = `<span class="frequency">${repeater.frequency || 'N/A'}</span>`;
+
+    const callCell = row.insertCell();
+    callCell.innerHTML = `<span class="callsign">${repeater.call || 'N/A'}</span>`;
+
+    row.insertCell().textContent = repeater.location || repeater.general_location || '';
+    row.insertCell().textContent = repeater.site_name || '';
+    row.insertCell().textContent = repeater.sponsor || '';
+    row.insertCell().textContent = repeater.ctcss || '';
+    row.insertCell().textContent = repeater.offset || '';
+    row.insertCell().textContent = repeater.elevation || '';
+
+    const distanceCell = row.insertCell();
+    if (repeater.distance) {
+        if (repeater.distance === 'None' || repeater.distance === 'N/A') {
+            distanceCell.textContent = repeater.distance;
+        } else {
+            distanceCell.innerHTML = `<span class="distance">${repeater.distance} mi</span>`;
+        }
+    } else {
+        distanceCell.textContent = '';
+    }
+
+    row.insertCell().textContent = repeater.internet_link || '';
+    row.insertCell().textContent = repeater.info || '';
+
+    return row;
 }
 
 function updateStats() {
-    const total = allRepeaters.length;
-    const filtered = filteredRepeaters.length;
-    const favoritesCount = favorites.size;
-    const closedCount = allRepeaters.filter(r => r.closed === 'Y').length;
+    const total = AppState.allRepeaters.length;
+    const filtered = AppState.filteredRepeaters.length;
+    const favoritesCount = AppState.favorites.size;
+    const closedCount = AppState.allRepeaters.filter(r => r.closed === 'Y').length;
     const showClosed = document.getElementById('showClosedFilter').checked;
     const closedStatus = showClosed ? 'closed shown' : 'closed not shown';
     const statsEl = document.getElementById('stats');
-    
+
     if (total === 0) {
         statsEl.textContent = 'No data loaded';
     } else if (filtered === total) {
