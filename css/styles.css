@@ -101,17 +101,6 @@ button:disabled {
     font-weight: bold;
     color: #666;
 }
-.debug {
-    background-color: #fff3cd;
-    border: 1px solid #ffeaa7;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-}
 table {
     width: 100%;
     border-collapse: collapse;

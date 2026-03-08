@@ -3,25 +3,11 @@ let allRepeaters = [];
 let filteredRepeaters = [];
 let currentSort = { column: null, direction: 'asc' };
 let userLocation = null;
-let debugInfo = [];
-let socket = null;
 let currentView = 'table'; // 'table', 'map', 'both'
 let lastDataUpdate = null;
 let favorites = new Set();
 
 // Utility functions
-function addDebug(message) {
-    // Debug messages disabled for production
-}
-
-function debugMissingLocationData() {
-    // Location data analysis available in Stats for Nerds modal
-}
-
-function toggleDebug() {
-    // Simplified - no more debug DOM manipulation
-}
-
 function getBand(frequency) {
     const freq = parseFloat(frequency);
     if (freq >= 50 && freq < 54) return '6m';
@@ -62,10 +48,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 // Data loading and processing
-function initSocket() {
-    // No longer needed
-}
-
 function loadData() {
     fetch('/api/data')
     .then(response => response.json())
@@ -76,8 +58,7 @@ function loadData() {
             allRepeaters = data.repeaters;
             filteredRepeaters = [...allRepeaters];
             
-            // Process data (always v2 now)
-            processRepeaterData('v2');
+            processRepeaterData();
             
             displayRepeaters();
             updateStats();
@@ -88,10 +69,7 @@ function loadData() {
             
             // Apply default filter to hide closed repeaters
             applyFilters();
-            
-            // Debug missing location data
-            debugMissingLocationData();
-            
+
             // Store the last update time
             lastDataUpdate = data.last_updated;
             
@@ -108,33 +86,26 @@ function loadData() {
     });
 }
 
-function processRepeaterData(version) {
+function processRepeaterData() {
     allRepeaters.forEach(repeater => {
-        if (version === 'v2') {
-            // v2 data processing
-            // Map v2 fields to expected frontend fields
-            repeater.general_location = repeater.location || repeater.general_location || '';
-            repeater.ctcss = repeater.ctcss_in || repeater.ctcss_out || '';
-            repeater.elevation = repeater.elevation_feet || '';
-            repeater.info = repeater.notes || '';
-            
-            // Process internet link data
-            repeater.internet_link = formatInternetLink(repeater.internet_link || '');
-            
-            // Create a combined info field with additional v2 data
-            let infoItems = [];
-            if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
-            if (repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
-            if (repeater.races === 'Y') infoItems.push('RACES');
-            if (repeater.ares === 'Y') infoItems.push('ARES');
-            if (repeater.emergency_power === 'Y') infoItems.push('Emergency Power');
-            if (repeater.autopatch === 'Y') infoItems.push('Autopatch');
-            repeater.info = infoItems.join(', ');
-            
-        } else {
-            // v1 data - already in expected format
-            // No additional processing needed
-        }
+        // Map v2 fields to expected frontend fields
+        repeater.general_location = repeater.location || repeater.general_location || '';
+        repeater.ctcss = repeater.ctcss_in || repeater.ctcss_out || '';
+        repeater.elevation = repeater.elevation_feet || '';
+        repeater.info = repeater.notes || '';
+
+        // Process internet link data
+        repeater.internet_link = formatInternetLink(repeater.internet_link || '');
+
+        // Create a combined info field with additional v2 data
+        let infoItems = [];
+        if (repeater.wide_area === 'Y') infoItems.push('Wide Coverage');
+        if (repeater.link_freq) infoItems.push(`Linked: ${repeater.link_freq}`);
+        if (repeater.races === 'Y') infoItems.push('RACES');
+        if (repeater.ares === 'Y') infoItems.push('ARES');
+        if (repeater.emergency_power === 'Y') infoItems.push('Emergency Power');
+        if (repeater.autopatch === 'Y') infoItems.push('Autopatch');
+        repeater.info = infoItems.join(', ');
     });
     
     // Parse and build repeater links
@@ -411,7 +382,6 @@ document.addEventListener('keydown', function(e) {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     loadFavorites();
-    initSocket();
     // Try to load existing data on page load
     loadData();
 });
