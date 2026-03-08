@@ -13,6 +13,12 @@ async function applyFilters() {
     drawOtherLinks = document.getElementById('drawOtherLinksFilter').checked;
     drawNonValidatedLinks = document.getElementById('drawNonValidatedLinksFilter').checked;
 
+    // Validate ZIP code format
+    if (zipCode && !/^\d{5}$/.test(zipCode)) {
+        showMessage('Please enter a valid 5-digit ZIP code', 'error');
+        return;
+    }
+
     // Get user location if ZIP code provided
     if (zipCode && zipCode !== '') {
         userLocation = await getLocationFromZip(zipCode);
