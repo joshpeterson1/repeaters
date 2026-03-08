@@ -12,9 +12,9 @@
     <div class="container">
         <div class="header-container">
             <h1>Utah Repeater Viewer</h1>
-            <button class="settings-btn" onclick="openHelpModal()">Help</button>
+            <button class="settings-btn">Help</button>
         </div>
-        
+
         <div class="last-updated" id="lastUpdated"></div>
 
         <!-- Help Modal -->
@@ -22,9 +22,9 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Help</h3>
-                    <span class="close" onclick="closeHelpModal()">&times;</span>
+                    <span class="close">&times;</span>
                 </div>
-                
+
                 <div class="modal-section">
                     <div>
                         <h4>How does this work?</h4>
@@ -52,7 +52,7 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button class="btn-muted" onclick="showStatsForNerds()">Stats for nerds</button>
+                        <button class="btn-muted">Stats for nerds</button>
                         <a href="mailto:kk7qas@somber.dev?subject=UtahRepeaterViewer" style="color: var(--color-primary); text-decoration: none; font-weight: bold;">Contact</a>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
             <div class="modal-content stats-modal-content">
                 <div class="modal-header">
                     <h3>Stats for nerds</h3>
-                    <span class="close" onclick="closeStatsModal()">&times;</span>
+                    <span class="close">&times;</span>
                 </div>
 
                 <div id="statsContent" class="stats-content">
@@ -78,23 +78,23 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Export Repeater Data</h3>
-                    <span class="close" onclick="closeExportModal()">&times;</span>
+                    <span class="close">&times;</span>
                 </div>
-                
+
                 <div class="modal-section">
                     <div>
                         <h4>Standard Formats</h4>
                         <div class="export-formats">
-                            <button class="export-btn" onclick="exportCSV()">Export CSV</button>
-                            <button class="export-btn" onclick="exportKML()">Export KML</button>
+                            <button class="export-btn" data-action="export-csv">Export CSV</button>
+                            <button class="export-btn" data-action="export-kml">Export KML</button>
                         </div>
                     </div>
 
                     <div class="modal-divider">
                         <h4>Radio Programming Formats (Experimental)</h4>
                         <div class="export-formats">
-                            <button class="export-btn" onclick="exportKX3()">Export Elecraft KX3</button>
-                            <button class="export-btn" onclick="exportChirp()">Export CHIRP CSV</button>
+                            <button class="export-btn" data-action="export-kx3">Export Elecraft KX3</button>
+                            <button class="export-btn" data-action="export-chirp">Export CHIRP CSV</button>
                         </div>
                     </div>
 
@@ -105,7 +105,6 @@
                 </div>
             </div>
         </div>
-
 
         <div class="controls">
             <div class="control-group">
@@ -163,47 +162,47 @@
                     Draw Non-Validated Links
                 </label>
             </div>
-            <button onclick="applyFilters()">Apply Filters</button>
-            <button onclick="clearFilters()">Clear All</button>
-            <button class="export-btn" onclick="openExportModal()">Export</button>
+            <button data-action="apply-filters">Apply Filters</button>
+            <button data-action="clear-filters">Clear All</button>
+            <button class="export-btn" data-action="open-export">Export</button>
         </div>
 
         <div class="stats" id="stats">No data loaded</div>
-        
+
         <div class="view-toggle">
             <strong>View:</strong>
-            <button id="tableViewBtn" class="active" onclick="showTableView()">Table</button>
-            <button id="mapViewBtn" onclick="showMapView()">Map</button>
-            <button id="bothViewBtn" onclick="showBothViews()">Both</button>
+            <button id="tableViewBtn" class="active">Table</button>
+            <button id="mapViewBtn">Map</button>
+            <button id="bothViewBtn">Both</button>
         </div>
 
         <div class="map-container" id="mapContainer" style="display: none;">
             <div class="map-controls">
-                <button onclick="fitMapToRepeaters()">Fit to All Repeaters</button>
-                <button onclick="centerMapOnUser()" id="centerUserBtn" style="display: none;">Center on My Location</button>
+                <button data-action="fit-repeaters">Fit to All Repeaters</button>
+                <button id="centerUserBtn" style="display: none;">Center on My Location</button>
                 <span id="mapStats"></span>
             </div>
             <div id="map" style="position: relative;">
-                <button class="fullscreen-btn" onclick="toggleFullscreen()" id="fullscreenBtn" title="Toggle Fullscreen">⛶</button>
+                <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle Fullscreen">&#x26F6;</button>
             </div>
         </div>
-        
+
         <div class="table-container">
             <table id="repeaterTable">
                 <thead>
                     <tr>
                         <th style="width: 40px;">&#9733;</th>
-                        <th data-sort="frequency" onclick="sortTable('frequency')">Frequency</th>
-                        <th data-sort="call" onclick="sortTable('call')">Call</th>
-                        <th data-sort="general_location" onclick="sortTable('general_location')">Location</th>
-                        <th data-sort="site_name" onclick="sortTable('site_name')">Site</th>
-                        <th data-sort="sponsor" onclick="sortTable('sponsor')">Sponsor</th>
-                        <th data-sort="ctcss" onclick="sortTable('ctcss')">CTCSS</th>
-                        <th data-sort="offset" onclick="sortTable('offset')">Offset</th>
-                        <th data-sort="elevation" onclick="sortTable('elevation')">Elevation</th>
-                        <th data-sort="distance" onclick="sortTable('distance')">Distance</th>
-                        <th data-sort="internet_link" onclick="sortTable('internet_link')">Internet</th>
-                        <th data-sort="info" onclick="sortTable('info')">Info</th>
+                        <th data-sort="frequency">Frequency</th>
+                        <th data-sort="call">Call</th>
+                        <th data-sort="general_location">Location</th>
+                        <th data-sort="site_name">Site</th>
+                        <th data-sort="sponsor">Sponsor</th>
+                        <th data-sort="ctcss">CTCSS</th>
+                        <th data-sort="offset">Offset</th>
+                        <th data-sort="elevation">Elevation</th>
+                        <th data-sort="distance">Distance</th>
+                        <th data-sort="internet_link">Internet</th>
+                        <th data-sort="info">Info</th>
                     </tr>
                 </thead>
                 <tbody id="repeaterTableBody">
@@ -219,233 +218,6 @@
     <script src='js/filters.js'></script>
     <script src='js/export.js'></script>
     <script src='js/data.js'></script>
-    <script>
-
-        function handleRowClick(repeater, rowElement) {
-            // Clear previous selection
-            clearRepeaterSelection();
-            
-            // Select the clicked row
-            rowElement.classList.add('selected');
-            
-            // If map is visible, show on map
-            if (AppState.currentView !== 'table') {
-                selectRepeaterOnMap(repeater);
-            } else {
-                // If only table view, switch to both view to show on map
-                showBothViews();
-                setTimeout(() => {
-                    selectRepeaterOnMap(repeater);
-                }, 1000); // Wait for map to initialize
-            }
-        }
-
-
-
-        // Help modal functions
-        function openHelpModal() {
-            document.getElementById('helpModal').style.display = 'block';
-        }
-
-        function closeHelpModal() {
-            document.getElementById('helpModal').style.display = 'none';
-        }
-
-        // Export modal functions
-        function openExportModal() {
-            document.getElementById('exportModal').style.display = 'block';
-        }
-
-        function closeExportModal() {
-            document.getElementById('exportModal').style.display = 'none';
-        }
-
-        // Stats modal functions
-        function openStatsModal() {
-            document.getElementById('statsModal').style.display = 'block';
-        }
-
-        function closeStatsModal() {
-            document.getElementById('statsModal').style.display = 'none';
-        }
-
-        function showStatsForNerds() {
-            openStatsModal();
-            generateStatsContent();
-        }
-
-        function generateStatsContent() {
-            const statsContent = document.getElementById('statsContent');
-            let content = '';
-            
-            // Get bidirectional link validation results
-            const validatedLinks = AppState.repeaterLinks.filter(l => l.type === 'frequency').length;
-            const nonValidatedLinksCount = AppState.nonValidatedLinks.length;
-            const intertieLinks = AppState.repeaterLinks.filter(l => l.type === 'intertie').length;
-            const systemLinks = AppState.repeaterLinks.filter(l => l.type === 'system').length;
-            
-            content += '=== BIDIRECTIONAL LINK VALIDATION RESULTS ===\n';
-            content += `Successful bidirectional links: ${validatedLinks}\n`;
-            content += `Non-validated single links: ${nonValidatedLinksCount}\n`;
-
-            // List the actual non-validated links
-            if (AppState.nonValidatedLinks.length > 0) {
-                AppState.nonValidatedLinks.forEach((link, index) => {
-                    content += `  ${index + 1}. ${link.from.call} <> ${link.to.call}\n`;
-                });
-            }
-            
-            content += `Intertie links: ${intertieLinks}\n`;
-            content += `System links: ${systemLinks}\n`;
-            
-            // Get system breakdown
-            const systemRepeaters = {};
-            AppState.allRepeaters.forEach(repeater => {
-                const linkFreqText = (repeater.link_freq || '').toLowerCase();
-                const systemType = getSystemType(linkFreqText);
-                if (systemType) {
-                    if (!systemRepeaters[systemType]) {
-                        systemRepeaters[systemType] = [];
-                    }
-                    systemRepeaters[systemType].push(repeater);
-                }
-            });
-            
-            Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
-                const linkCount = (repeaters.length * (repeaters.length - 1)) / 2;
-                content += `  ${systemType.toUpperCase()} system: ${repeaters.length} repeaters, ${linkCount} links\n`;
-            });
-            
-            // Get failed bidirectional links
-            const failedBidirectionalLinks = [];
-            AppState.allRepeaters.forEach(repeater => {
-                if (!repeater.lat || !repeater.lon) return;
-                
-                const linkFrequencies = extractLinkFrequencies(repeater);
-                linkFrequencies.forEach(linkFreq => {
-                    const potentialMatches = findAllRepeatersByFrequency(linkFreq);
-                    const validMatches = potentialMatches.filter(match => 
-                        match !== repeater && match.lat && match.lon
-                    );
-                    
-                    if (validMatches.length > 0) {
-                        let foundBidirectionalLink = false;
-                        
-                        validMatches.forEach(linkedRepeater => {
-                            const reverseLinks = extractLinkFrequencies(linkedRepeater);
-                            const repeaterFreq = parseFloat(repeater.frequency || repeater.output_frequency);
-                            
-                            const hasReverseLink = reverseLinks.some(freq => {
-                                const freq1 = parseFloat(freq);
-                                const freq2 = parseFloat(repeaterFreq);
-                                return freq1 === freq2;
-                            });
-                            
-                            if (hasReverseLink) {
-                                foundBidirectionalLink = true;
-                            }
-                        });
-                        
-                        if (!foundBidirectionalLink) {
-                            const failedLink = {
-                                call: repeater.call,
-                                frequency: repeater.frequency || repeater.output_frequency,
-                                location: repeater.location || repeater.general_location,
-                                linkFreq: linkFreq,
-                                potentialMatches: validMatches.map(match => ({
-                                    call: match.call,
-                                    frequency: match.frequency || match.output_frequency,
-                                    location: match.location || match.general_location
-                                }))
-                            };
-                            failedBidirectionalLinks.push(failedLink);
-                        }
-                    }
-                });
-            });
-            
-            content += `Failed bidirectional attempts: ${failedBidirectionalLinks.length}\n\n`;
-            
-            if (failedBidirectionalLinks.length > 0) {
-                content += '=== FAILED BIDIRECTIONAL LINKS ===\n';
-                failedBidirectionalLinks.forEach((link, index) => {
-                    content += `${index + 1}. ${link.call} (${link.frequency}) at ${link.location}\n`;
-                    content += `   → Links to: ${link.linkFreq}\n`;
-                    if (link.potentialMatches && link.potentialMatches.length > 0) {
-                        content += `   → Found ${link.potentialMatches.length} potential matches:\n`;
-                        link.potentialMatches.forEach((match, matchIndex) => {
-                            content += `     ${matchIndex + 1}. ${match.call} (${match.frequency}) at ${match.location}\n`;
-                            content += `        → But ${match.call} doesn't reference ${link.frequency} back\n`;
-                        });
-                    } else {
-                        content += `   → No repeaters found at ${link.linkFreq}\n`;
-                    }
-                    content += '\n';
-                });
-            }
-            
-            // Get missing location data
-            const missingLocationRepeaters = [];
-            let simplexCount = 0;
-            let sharedCount = 0;
-            let normalMissingCount = 0;
-            
-            AppState.allRepeaters.forEach(repeater => {
-                const callsign = (repeater.call || '').toLowerCase();
-                const hasLocation = repeater.lat && repeater.lon;
-                
-                if (callsign.includes('(simplex)')) {
-                    simplexCount++;
-                } else if (callsign.includes('(shared)')) {
-                    sharedCount++;
-                } else if (!hasLocation) {
-                    normalMissingCount++;
-                    missingLocationRepeaters.push({
-                        call: repeater.call,
-                        location: repeater.location || repeater.general_location || 'No location info'
-                    });
-                }
-            });
-            
-            content += '=== LOCATION DATA ANALYSIS ===\n';
-            content += `Total repeaters: ${AppState.allRepeaters.length}\n`;
-            content += `Simplex entries: ${simplexCount}\n`;
-            content += `Shared entries: ${sharedCount}\n`;
-            content += `Normal callsigns missing precision location data: ${normalMissingCount}\n\n`;
-            
-            if (missingLocationRepeaters.length > 0) {
-                content += '=== NORMAL CALLSIGNS MISSING PRECISION LOCATION DATA ===\n';
-                missingLocationRepeaters.forEach((repeater, index) => {
-                    content += `${index + 1}. ${repeater.call} - Location: "${repeater.location}"\n`;
-                });
-            }
-            
-            statsContent.textContent = content;
-        }
-
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            const helpModal = document.getElementById('helpModal');
-            const exportModal = document.getElementById('exportModal');
-            const statsModal = document.getElementById('statsModal');
-            if (event.target === helpModal) {
-                closeHelpModal();
-            }
-            if (event.target === exportModal) {
-                closeExportModal();
-            }
-            if (event.target === statsModal) {
-                closeStatsModal();
-            }
-        }
-
-
-
-
-
-
-
-
-    </script>
+    <script src='js/ui.js'></script>
 </body>
 </html>
