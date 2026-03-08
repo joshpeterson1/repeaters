@@ -340,12 +340,12 @@ function toggleFullscreen() {
     if (mapContainer.classList.contains('fullscreen')) {
         // Exit fullscreen
         mapContainer.classList.remove('fullscreen');
-        fullscreenBtn.innerHTML = '\u26F6';
+        fullscreenBtn.textContent = '\u26F6';
         fullscreenBtn.title = 'Toggle Fullscreen';
     } else {
         // Enter fullscreen
         mapContainer.classList.add('fullscreen');
-        fullscreenBtn.innerHTML = '\u2715';
+        fullscreenBtn.textContent = '\u2715';
         fullscreenBtn.title = 'Exit Fullscreen';
     }
 
