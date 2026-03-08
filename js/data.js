@@ -165,9 +165,9 @@ function createPairKey(repeater1, repeater2) {
 
 function getSystemType(linkFreqText) {
     // Check for system keywords in link_freq field
-    if (linkFreqText.includes('cactus')) return 'cactus';
-    if (linkFreqText.includes('barc')) return 'barc';
-    if (linkFreqText.includes('sdarc')) return 'sdarc';
+    if (linkFreqText.includes(SYSTEM_TYPES.CACTUS)) return SYSTEM_TYPES.CACTUS;
+    if (linkFreqText.includes(SYSTEM_TYPES.BARC)) return SYSTEM_TYPES.BARC;
+    if (linkFreqText.includes(SYSTEM_TYPES.SDARC)) return SYSTEM_TYPES.SDARC;
     return null;
 }
 
@@ -191,13 +191,8 @@ function extractLinkFrequencies(repeater) {
             while ((match = pattern.exec(linkFreqField)) !== null) {
                 const freq = parseFloat(match[1]);
                 // Validate frequency ranges for amateur radio
-                if ((freq >= 28 && freq <= 29.7) ||    // 10m
-                    (freq >= 50 && freq <= 54) ||      // 6m
-                    (freq >= 144 && freq <= 148) ||    // 2m
-                    (freq >= 222 && freq <= 225) ||    // 1.25m
-                    (freq >= 420 && freq <= 450) ||    // 70cm
-                    (freq >= 902 && freq <= 928) ||    // 33cm
-                    (freq >= 1240 && freq <= 1300)) {  // 23cm
+                const isValidFreq = LINK_FREQ_RANGES.some(r => freq >= r.min && freq <= r.max);
+                if (isValidFreq) {
                     frequencies.push(freq);
                 }
             }

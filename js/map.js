@@ -18,8 +18,8 @@ function initializeMap() {
     map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/outdoors-v12', // Good for radio coverage
-        center: [-111.6946, 40.2338], // Utah County center (Provo area)
-        zoom: 9
+        center: MAP_CENTER,
+        zoom: MAP_DEFAULT_ZOOM
     });
     
     map.on('load', function() {
@@ -529,29 +529,7 @@ function updateRepeaterLinks() {
     const linkColorMap = new Map(); // Track colors for each link pair
     let colorIndex = 0;
     
-    // Define a palette of distinct, high-visibility colors for links
-    const linkColors = [
-        '#FF0000', // Red (reserved for intertie)
-        '#00AA00', // Dark Green (better than bright green)
-        '#0066FF', // Bright Blue
-        '#FF6600', // Orange
-        '#AA00AA', // Purple/Magenta
-        '#00AAAA', // Teal/Cyan
-        '#FFAA00', // Amber (better than yellow)
-        '#AA0000', // Dark Red
-        '#0000AA', // Dark Blue
-        '#AA6600', // Brown/Orange
-        '#6600AA', // Dark Purple
-        '#00AA66', // Teal Green
-        '#FF0066', // Pink/Red
-        '#66AA00', // Olive Green
-        '#0066AA', // Steel Blue
-        '#AA6600', // Dark Orange
-        '#6600FF', // Blue Purple
-        '#FF6600', // Red Orange
-        '#00FF66', // Spring Green
-        '#6666AA'  // Slate Blue
-    ];
+    const linkColors = LINK_COLORS;
     
     // Combine regular repeater links with non-validated links if enabled
     const allLinksToRender = [...repeaterLinks];
@@ -582,9 +560,9 @@ function updateRepeaterLinks() {
                 } else if (link.type === 'system') {
                     // Use consistent colors for each system type
                     const systemColors = {
-                        'cactus': '#00FF00',   // Green for Cactus
-                        'barc': '#0000FF',     // Blue for BARC
-                        'sdarc': '#FF00FF'     // Magenta for SDARC
+                        [SYSTEM_TYPES.CACTUS]: '#00FF00',
+                        [SYSTEM_TYPES.BARC]: '#0000FF',
+                        [SYSTEM_TYPES.SDARC]: '#FF00FF',
                     };
                     linkColor = systemColors[link.systemType] || '#FFA500'; // Orange fallback
                 } else if (link.type === 'non-validated') {

@@ -10,12 +10,9 @@ let favorites = new Set();
 // Utility functions
 function getBand(frequency) {
     const freq = parseFloat(frequency);
-    if (freq >= 50 && freq < 54) return '6m';
-    if (freq >= 144 && freq < 148) return '2m';
-    if (freq >= 222 && freq < 225) return '1.25m';
-    if (freq >= 420 && freq < 450) return '70cm';
-    if (freq >= 902 && freq < 928) return '33cm';
-    if (freq >= 1240 && freq < 1300) return '23cm';
+    for (const band of BANDS) {
+        if (freq >= band.min && freq < band.max) return band.name;
+    }
     return 'other';
 }
 
@@ -235,7 +232,7 @@ function getRepeaterId(repeater) {
 
 function loadFavorites() {
     try {
-        const savedFavorites = localStorage.getItem('utah-repeater-favorites');
+        const savedFavorites = localStorage.getItem(FAVORITES_KEY);
         if (savedFavorites) {
             favorites = new Set(JSON.parse(savedFavorites));
         }
@@ -247,7 +244,7 @@ function loadFavorites() {
 
 function saveFavorites() {
     try {
-        localStorage.setItem('utah-repeater-favorites', JSON.stringify([...favorites]));
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
     } catch (error) {
         console.error('Error saving favorites:', error);
     }
