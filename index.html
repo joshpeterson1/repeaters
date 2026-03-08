@@ -15,7 +15,7 @@
             <button class="settings-btn" onclick="openHelpModal()">Help</button>
         </div>
         
-        <div class="last-updated" id="lastUpdated" style="margin-bottom: 15px; font-size: 12px; color: #666; font-style: italic;"></div>
+        <div class="last-updated" id="lastUpdated"></div>
 
         <!-- Help Modal -->
         <div id="helpModal" class="modal">
@@ -25,10 +25,10 @@
                     <span class="close" onclick="closeHelpModal()">&times;</span>
                 </div>
                 
-                <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="modal-section">
                     <div>
-                        <h4 style="margin-bottom: 10px; color: #007bff;">How does this work?</h4>
-                        <p style="line-height: 1.6; color: #333;">
+                        <h4>How does this work?</h4>
+                        <p>
                             <ol>
                                 <li>Once a week, the <a href="https://utahvhfs.org/raw_dat.html" target="_blank">raw data</a> from UVHFS is ingested (see notice <a href="https://utahvhfs.org/rptr.html" target="_blank">here</a> for info regarding why) - </li><br>
                                 <li>Any repeaters marked as offline <strong>are not</strong> ingested (does not apply to temprarily offline)</li><br>
@@ -36,24 +36,24 @@
                             </ol>
                         </p>
                     </div>
-                    
-                    <div style="padding-top: 15px; border-top: 1px solid #ddd;">
-                        <h4 style="margin-bottom: 10px; color: #007bff;">Notes</h4>
-                        <p style="line-height: 1.6; color: #333;">
+
+                    <div class="modal-divider">
+                        <h4>Notes</h4>
+                        <p>
                             <u>Multi-band filtering:</u> The application includes the ability to filter by multiple bands. Use CMD/Ctrl or Shift.
                         </p>
-                        <p style="line-height: 1.6; color: #333;">
+                        <p>
                             <u>Links:</u> In order for a link to be shown, bidrectional validation <em>must</em> pass. In other words, if repeater A references repeater B as a link, repeater B must then also reference repeater A. If this criteria is met, you'll see the link shown in 'Draw Other Links' ('other', in this case meaning 'non-IMIT'). <br>
-                            There is not a great way to handle repeaters that fail bidirectional validation <em>unless</em> there is only a single repeater on the frequency that said repeater specifies as its' link. The 'Draw Non-Validated Links' button allows you to see such links on the map. 
+                            There is not a great way to handle repeaters that fail bidirectional validation <em>unless</em> there is only a single repeater on the frequency that said repeater specifies as its' link. The 'Draw Non-Validated Links' button allows you to see such links on the map.
                         </p>
-                        <p style="line-height: 1.6; color: #333;">
+                        <p>
                             <u>Cactus Intertie:</u> Becuase the Cactus Intertie is a closed system, filters for 'Draw Other Links' <em>and</em> 'Show Closed Repeaters' must be enabled.
                         </p>
                     </div>
-                    
-                    <div style="text-align: center; padding-top: 20px; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 10px;">
-                        <button onclick="showStatsForNerds()" style="background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Stats for nerds</button>
-                        <a href="mailto:kk7qas@somber.dev?subject=UtahRepeaterViewer" style="color: #007bff; text-decoration: none; font-weight: bold;">Contact</a>
+
+                    <div class="modal-footer">
+                        <button class="btn-muted" onclick="showStatsForNerds()">Stats for nerds</button>
+                        <a href="mailto:kk7qas@somber.dev?subject=UtahRepeaterViewer" style="color: var(--color-primary); text-decoration: none; font-weight: bold;">Contact</a>
                     </div>
                 </div>
             </div>
@@ -61,13 +61,13 @@
 
         <!-- Stats for Nerds Modal -->
         <div id="statsModal" class="modal">
-            <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-content stats-modal-content">
                 <div class="modal-header">
                     <h3>Stats for nerds</h3>
                     <span class="close" onclick="closeStatsModal()">&times;</span>
                 </div>
-                
-                <div id="statsContent" style="font-family: monospace; font-size: 12px; white-space: pre-wrap; background-color: #f8f9fa; padding: 15px; border-radius: 4px; line-height: 1.4;">
+
+                <div id="statsContent" class="stats-content">
                     Loading stats...
                 </div>
             </div>
@@ -81,25 +81,25 @@
                     <span class="close" onclick="closeExportModal()">&times;</span>
                 </div>
                 
-                <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="modal-section">
                     <div>
-                        <h4 style="margin-bottom: 10px;">Standard Formats</h4>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <h4>Standard Formats</h4>
+                        <div class="export-formats">
                             <button class="export-btn" onclick="exportCSV()">Export CSV</button>
                             <button class="export-btn" onclick="exportKML()">Export KML</button>
                         </div>
                     </div>
-                    
-                    <div style="padding-top: 15px; border-top: 1px solid #ddd;">
-                        <h4 style="margin-bottom: 10px;">Radio Programming Formats (Experimental)</h4>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+
+                    <div class="modal-divider">
+                        <h4>Radio Programming Formats (Experimental)</h4>
+                        <div class="export-formats">
                             <button class="export-btn" onclick="exportKX3()">Export Elecraft KX3</button>
                             <button class="export-btn" onclick="exportChirp()">Export CHIRP CSV</button>
                         </div>
                     </div>
-                    
-                    <div style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; font-size: 12px; color: #666;">
-                        <strong>Note:</strong> Radio programming files are generated from currently filtered repeaters. 
+
+                    <div class="modal-note">
+                        <strong>Note:</strong> Radio programming files are generated from currently filtered repeaters.
                         Apply filters first to export specific repeaters to your radio.
                     </div>
                 </div>
