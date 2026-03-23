@@ -9,6 +9,7 @@ const AppState = {
     favorites: new Set(),
     map: null,
     mapInitialized: false,
+    mapReady: null,
     selectedRepeater: null,
     repeaterLinks: [],
     drawIntertieLinks: false,

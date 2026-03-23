@@ -5,12 +5,14 @@ function handleRowClick(repeater, rowElement) {
     rowElement.classList.add('selected');
 
     if (AppState.currentView !== 'table') {
-        selectRepeaterOnMap(repeater);
+        AppState.mapReady.then(function() {
+            selectRepeaterOnMap(repeater);
+        });
     } else {
         showBothViews();
-        setTimeout(() => {
+        AppState.mapReady.then(function() {
             selectRepeaterOnMap(repeater);
-        }, 1000);
+        });
     }
 }
 

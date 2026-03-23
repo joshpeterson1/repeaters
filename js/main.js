@@ -282,22 +282,14 @@ function showMapView() {
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'none';
 
-    if (!AppState.mapInitialized) {
-        initializeMap();
-        // Wait a bit for map to initialize, then update data
-        setTimeout(() => {
-            updateMapData();
+    initializeMap().then(function() {
+        AppState.map.resize();
+        updateMapData();
+        if (!AppState.mapInitialDataLoaded) {
             fitMapToRepeaters();
-        }, 1000);
-    } else {
-        // Resize map first, then update data
-        setTimeout(() => {
-            if (AppState.map) {
-                AppState.map.resize();
-                updateMapData();
-            }
-        }, 100);
-    }
+            AppState.mapInitialDataLoaded = true;
+        }
+    });
 
     document.getElementById('tableViewBtn').classList.remove('active');
     document.getElementById('mapViewBtn').classList.add('active');
@@ -311,21 +303,14 @@ function showBothViews() {
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'block';
 
-    if (!AppState.mapInitialized) {
-        initializeMap();
-        setTimeout(() => {
-            updateMapData();
+    initializeMap().then(function() {
+        AppState.map.resize();
+        updateMapData();
+        if (!AppState.mapInitialDataLoaded) {
             fitMapToRepeaters();
-        }, 1000);
-    } else {
-        // Resize map first, then update data
-        setTimeout(() => {
-            if (AppState.map) {
-                AppState.map.resize();
-                updateMapData();
-            }
-        }, 100);
-    }
+            AppState.mapInitialDataLoaded = true;
+        }
+    });
 
     document.getElementById('tableViewBtn').classList.remove('active');
     document.getElementById('mapViewBtn').classList.remove('active');

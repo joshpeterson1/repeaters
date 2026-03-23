@@ -5,7 +5,12 @@ const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQ
 
 // Initialize Mapbox map
 function initializeMap() {
-    if (AppState.mapInitialized) return;
+    if (AppState.mapReady) return AppState.mapReady;
+
+    var resolveMapReady;
+    AppState.mapReady = new Promise(function(resolve) {
+        resolveMapReady = resolve;
+    });
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -269,9 +274,11 @@ function initializeMap() {
             AppState.map.getCanvas().style.cursor = '';
         });
 
+        AppState.mapInitialized = true;
+        resolveMapReady();
     });
 
-    AppState.mapInitialized = true;
+    return AppState.mapReady;
 }
 
 function createPopupContent(repeater, isMultiple = false, groupIndex = 0, totalInGroup = 1) {
