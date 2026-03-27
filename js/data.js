@@ -1,6 +1,8 @@
 // Data processing and repeater link parsing functionality
+import { SYSTEM_TYPES, LINK_FREQ_RANGES } from './constants.js';
+import { AppState } from './state.js';
 
-function parseRepeaterLinks() {
+export function parseRepeaterLinks() {
     AppState.repeaterLinks = [];
     const linkMap = new Map();
     const processedPairs = new Set();
@@ -39,7 +41,7 @@ function parseRepeaterLinks() {
     AppState.nonValidatedLinks = nonValidatedLinks;
 }
 
-function processFrequencyLinks(repeater, linkMap, processedPairs, nonValidatedLinks) {
+export function processFrequencyLinks(repeater, linkMap, processedPairs, nonValidatedLinks) {
     const linkFrequencies = extractLinkFrequencies(repeater);
 
     linkFrequencies.forEach(linkFreq => {
@@ -97,7 +99,7 @@ function processFrequencyLinks(repeater, linkMap, processedPairs, nonValidatedLi
     });
 }
 
-function createIntertieLinks(intertieRepeaters) {
+export function createIntertieLinks(intertieRepeaters) {
     for (let i = 0; i < intertieRepeaters.length; i++) {
         for (let j = i + 1; j < intertieRepeaters.length; j++) {
             AppState.repeaterLinks.push({
@@ -109,7 +111,7 @@ function createIntertieLinks(intertieRepeaters) {
     }
 }
 
-function createSystemLinks(systemRepeaters) {
+export function createSystemLinks(systemRepeaters) {
     Object.entries(systemRepeaters).forEach(([systemType, repeaters]) => {
         for (let i = 0; i < repeaters.length; i++) {
             for (let j = i + 1; j < repeaters.length; j++) {
@@ -124,21 +126,20 @@ function createSystemLinks(systemRepeaters) {
     });
 }
 
-// Helper function to create a unique pair key
-function createPairKey(repeater1, repeater2) {
+export function createPairKey(repeater1, repeater2) {
     const id1 = `${repeater1.call}-${repeater1.frequency || repeater1.output_frequency}`;
     const id2 = `${repeater2.call}-${repeater2.frequency || repeater2.output_frequency}`;
     return [id1, id2].sort().join('<->');
 }
 
-function getSystemType(linkFreqText) {
+export function getSystemType(linkFreqText) {
     if (linkFreqText.includes(SYSTEM_TYPES.CACTUS)) return SYSTEM_TYPES.CACTUS;
     if (linkFreqText.includes(SYSTEM_TYPES.BARC)) return SYSTEM_TYPES.BARC;
     if (linkFreqText.includes(SYSTEM_TYPES.SDARC)) return SYSTEM_TYPES.SDARC;
     return null;
 }
 
-function extractLinkFrequencies(repeater) {
+export function extractLinkFrequencies(repeater) {
     const frequencies = [];
     const linkFreqField = repeater.link_freq || '';
 
@@ -165,7 +166,7 @@ function extractLinkFrequencies(repeater) {
     return [...new Set(frequencies)];
 }
 
-function findRepeaterByFrequency(frequency) {
+export function findRepeaterByFrequency(frequency) {
     return AppState.allRepeaters.find(repeater => {
         const outputFreq = parseFloat(repeater.frequency || repeater.output_frequency);
         const inputFreq = parseFloat(repeater.input_frequency);
@@ -174,7 +175,7 @@ function findRepeaterByFrequency(frequency) {
     });
 }
 
-function findAllRepeatersByFrequency(frequency) {
+export function findAllRepeatersByFrequency(frequency) {
     return AppState.allRepeaters.filter(repeater => {
         const outputFreq = parseFloat(repeater.frequency || repeater.output_frequency);
         const inputFreq = parseFloat(repeater.input_frequency);

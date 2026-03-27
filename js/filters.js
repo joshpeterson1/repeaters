@@ -1,6 +1,10 @@
 // Filtering and sorting functionality
+import { AppState } from './state.js';
+import { getBand, getLocationFromZip, calculateDistance, showMessage, getRepeaterId } from './utils.js';
+import { updateMapData } from './map.js';
+import { pushFiltersToURL } from './url-state.js';
 
-async function applyFilters() {
+export async function applyFilters() {
     const zipCode = document.getElementById('zipCode').value.trim();
     const maxDistance = document.getElementById('distance').value;
     const bandFilterSelect = document.getElementById('bandFilter');
@@ -70,7 +74,6 @@ async function applyFilters() {
             const distance = calculateDistance(AppState.userLocation.lat, AppState.userLocation.lon, repeater.lat, repeater.lon);
             repeater.distance = distance.toFixed(1);
         } else if (AppState.userLocation) {
-            // Set distance based on callsign type
             const callsign = (repeater.call || '').toLowerCase();
             if (callsign.includes('(simplex)') || callsign.includes('(shared)')) {
                 repeater.distance = 'None';
@@ -89,12 +92,13 @@ async function applyFilters() {
     if (AppState.currentView !== 'table') {
         updateMapData();
     }
+
+    pushFiltersToURL();
 }
 
-function clearFilters() {
+export function clearFilters() {
     document.getElementById('zipCode').value = '';
     document.getElementById('distance').value = '';
-    // Clear all selected options in the multiple select
     const bandFilter = document.getElementById('bandFilter');
     Array.from(bandFilter.options).forEach(option => option.selected = false);
     document.getElementById('callFilter').value = '';
@@ -109,7 +113,6 @@ function clearFilters() {
     AppState.drawNonValidatedLinks = false;
     AppState.userLocation = null;
 
-    // Clear distances
     AppState.allRepeaters.forEach(repeater => {
         delete repeater.distance;
     });
@@ -118,12 +121,12 @@ function clearFilters() {
     displayRepeaters();
     updateStats();
 
-    // Hide center user button
     document.getElementById('centerUserBtn').style.display = 'none';
     updateMapData();
+    pushFiltersToURL();
 }
 
-function sortTable(column) {
+export function sortTable(column) {
     if (AppState.currentSort.column === column) {
         AppState.currentSort.direction = AppState.currentSort.direction === 'asc' ? 'desc' : 'asc';
     } else {
@@ -135,7 +138,6 @@ function sortTable(column) {
         let aVal = a[column] || '';
         let bVal = b[column] || '';
 
-        // Handle numeric columns
         if (column === 'frequency' || column === 'elevation' || column === 'distance') {
             aVal = parseFloat(aVal) || 0;
             bVal = parseFloat(bVal) || 0;
@@ -153,20 +155,22 @@ function sortTable(column) {
     updateSortHeaders();
 }
 
-function updateSortHeaders() {
-    document.querySelectorAll('th').forEach(th => {
+export function updateSortHeaders() {
+    document.querySelectorAll('th[data-sort]').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
+        th.setAttribute('aria-sort', 'none');
     });
 
     if (AppState.currentSort.column) {
         const th = document.querySelector(`th[data-sort="${AppState.currentSort.column}"]`);
         if (th) {
             th.classList.add(`sort-${AppState.currentSort.direction}`);
+            th.setAttribute('aria-sort', AppState.currentSort.direction === 'asc' ? 'ascending' : 'descending');
         }
     }
 }
 
-function displayRepeaters() {
+export function displayRepeaters() {
     const tbody = document.getElementById('repeaterTableBody');
     tbody.innerHTML = '';
 
@@ -178,20 +182,17 @@ function displayRepeaters() {
     if (AppState.currentView !== 'table') updateMapData();
 }
 
-function createRepeaterRow(repeater) {
+export function createRepeaterRow(repeater) {
     const row = document.createElement('tr');
 
-    // Make row clickable (except for the star cell)
     row.classList.add('table-row-clickable');
     row.title = 'Click to show on map';
     row.addEventListener('click', (e) => {
-        // Don't trigger row click if clicking on the star
         if (!e.target.classList.contains('favorite-star')) {
             handleRowClick(repeater, row);
         }
     });
 
-    // Add favorite star cell
     const starCell = row.insertCell();
     const repeaterId = getRepeaterId(repeater);
     const isFavorited = AppState.favorites.has(repeaterId);
@@ -229,7 +230,7 @@ function createRepeaterRow(repeater) {
     return row;
 }
 
-function updateStats() {
+export function updateStats() {
     const total = AppState.allRepeaters.length;
     const filtered = AppState.filteredRepeaters.length;
     const favoritesCount = AppState.favorites.size;
@@ -244,5 +245,27 @@ function updateStats() {
         statsEl.textContent = `Showing all ${total} repeaters (${favoritesCount} favorites, ${closedCount} ${closedStatus})`;
     } else {
         statsEl.textContent = `Showing ${filtered} of ${total} repeaters (${favoritesCount} favorites, ${closedCount} ${closedStatus})`;
+    }
+}
+
+// handleRowClick moved here from ui.js to avoid circular dependency
+import { clearRepeaterSelection, selectRepeaterOnMap } from './map.js';
+import { showBothViews } from './main.js';
+import { openDetailPanel } from './detail-panel.js';
+
+export function handleRowClick(repeater, rowElement) {
+    clearRepeaterSelection();
+    rowElement.classList.add('selected');
+    openDetailPanel(repeater);
+
+    if (AppState.currentView !== 'table') {
+        AppState.mapReady.then(function() {
+            selectRepeaterOnMap(repeater);
+        });
+    } else {
+        showBothViews();
+        AppState.mapReady.then(function() {
+            selectRepeaterOnMap(repeater);
+        });
     }
 }

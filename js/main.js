@@ -1,80 +1,93 @@
-// Utility functions
-function getBand(frequency) {
-    const freq = parseFloat(frequency);
-    for (const band of BANDS) {
-        if (freq >= band.min && freq < band.max) return band.name;
-    }
-    return 'other';
-}
-
-async function getLocationFromZip(zipCode) {
-    try {
-        // Using a free geocoding service
-        const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
-        if (response.ok) {
-            const data = await response.json();
-            return {
-                lat: parseFloat(data.places[0].latitude),
-                lon: parseFloat(data.places[0].longitude)
-            };
-        }
-    } catch (error) {
-        console.error('Error geocoding ZIP code:', error);
-    }
-    return null;
-}
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 3959; // Earth's radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
+// Main application logic - data loading, favorites, view management
+import { AppState } from './state.js';
+import { showMessage, formatInternetLink, loadFavorites, saveFavorites } from './utils.js';
+import { displayRepeaters, updateStats, applyFilters } from './filters.js';
+import { updateMapData, initializeMap, clearRepeaterSelection, fitMapToRepeaters } from './map.js';
+import { parseRepeaterLinks } from './data.js';
+import { loadFiltersFromURL, pushFiltersToURL } from './url-state.js';
+import { initDarkMode } from './dark-mode.js';
+import { showWhatsNewIfNeeded } from './whats-new.js';
+import { openDetailFromURL } from './detail-panel.js';
 
 // Data loading and processing
-function loadData() {
-    fetch('/api/data')
-    .then(response => response.json())
-    .then(data => {
+export async function loadData() {
+    const statsEl = document.getElementById('stats');
+    const tbody = document.getElementById('repeaterTableBody');
+
+    // Show loading state
+    statsEl.innerHTML = '<span class="loading-indicator">Loading repeater data...</span>';
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">Loading...</td></tr>';
+
+    try {
+        const response = await fetch('/api/data');
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                showMessage('No repeater data available yet. Data will appear after the next weekly update.', 'error');
+                statsEl.textContent = 'No data available';
+                tbody.innerHTML = '';
+                return;
+            }
+            throw new Error(`Server returned ${response.status}`);
+        }
+
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            showMessage('Received invalid data from server.', 'error');
+            statsEl.textContent = 'Data error';
+            tbody.innerHTML = '';
+            return;
+        }
+
         if (data.error) {
             showMessage(data.error, 'error');
-        } else {
-            AppState.allRepeaters = data.repeaters;
-            AppState.filteredRepeaters = [...AppState.allRepeaters];
-
-            processRepeaterData();
-
-            displayRepeaters();
-            updateStats();
-
-            if (AppState.currentView !== 'table') {
-                updateMapData();
-            }
-
-            // Apply default filter to hide closed repeaters
-            applyFilters();
-
-            // Store the last update time
-            AppState.lastDataUpdate = data.last_updated;
-
-            // Update last updated time
-            const lastUpdated = document.getElementById('lastUpdated');
-            const updateTime = new Date(data.last_updated).toLocaleString();
-            lastUpdated.textContent = `Data updated weekly via automated scraping. Last update: ${updateTime}`;
-
-            showMessage(`Loaded ${data.count} repeaters`, 'success');
+            statsEl.textContent = 'Data error';
+            tbody.innerHTML = '';
+            return;
         }
-    })
-    .catch(error => {
-        showMessage('Error loading data: ' + error.message, 'error');
-    });
+
+        if (!data.repeaters || data.repeaters.length === 0) {
+            showMessage('No repeaters found in the dataset.', 'error');
+            statsEl.textContent = 'No repeaters found';
+            tbody.innerHTML = '';
+            return;
+        }
+
+        // Success path
+        AppState.allRepeaters = data.repeaters;
+        AppState.filteredRepeaters = [...AppState.allRepeaters];
+
+        processRepeaterData();
+
+        displayRepeaters();
+        updateStats();
+
+        if (AppState.currentView !== 'table') {
+            updateMapData();
+        }
+
+        applyFilters();
+
+        AppState.lastDataUpdate = data.last_updated;
+
+        const lastUpdated = document.getElementById('lastUpdated');
+        const updateTime = new Date(data.last_updated).toLocaleString();
+        lastUpdated.textContent = `Data updated weekly via automated scraping. Last update: ${updateTime}`;
+
+        showMessage(`Loaded ${data.count} repeaters`, 'success');
+
+        // Open detail panel if URL has a detail param
+        openDetailFromURL();
+    } catch (error) {
+        showMessage('Unable to load data. Check your connection and try again.', 'error');
+        statsEl.innerHTML = 'Failed to load data. <button class="retry-btn" onclick="loadData()">Retry</button>';
+        tbody.innerHTML = '';
+    }
 }
 
-function processRepeaterData() {
+export function processRepeaterData() {
     AppState.allRepeaters.forEach(repeater => {
         // Map v2 fields to expected frontend fields
         repeater.general_location = repeater.location || repeater.general_location || '';
@@ -103,145 +116,7 @@ function processRepeaterData() {
     AppState.filteredRepeaters = [...AppState.allRepeaters];
 }
 
-function formatInternetLink(internetLinkData) {
-    if (!internetLinkData || internetLinkData.trim() === '') {
-        return '';
-    }
-
-    // First, normalize common variations before processing
-    const normalizedData = internetLinkData
-        .replace(/D\s+Star/gi, 'D-Star')  // Convert "D Star" to "D-Star"
-        .replace(/Mot\s+DMR/gi, 'Mot DMR'); // Ensure "Mot DMR" stays together
-
-    // Split by common separators (comma, slash) but be more careful with spaces
-    const parts = normalizedData.split(/[,\/]+/).map(part => part.trim()).filter(part => part !== '');
-    const formattedParts = [];
-
-    parts.forEach(part => {
-        const trimmedPart = part.trim();
-
-        // Handle Echolink nodes (E followed by numbers)
-        if (/^E\d+$/i.test(trimmedPart)) {
-            const nodeNumber = trimmedPart.substring(1);
-            formattedParts.push(`Echo ${nodeNumber}`);
-        }
-        // Handle IRLP nodes (I followed by numbers)
-        else if (/^I\d+$/i.test(trimmedPart)) {
-            const nodeNumber = trimmedPart.substring(1);
-            formattedParts.push(`IRLP ${nodeNumber}`);
-        }
-        // Handle AllStar nodes (A followed by numbers)
-        else if (/^A\d+$/i.test(trimmedPart)) {
-            const nodeNumber = trimmedPart.substring(1);
-            formattedParts.push(`AllStar ${nodeNumber}`);
-        }
-        // Handle DMR with node numbers (e.g., "DMR 3192979")
-        else if (/^DMR\s+\d+$/i.test(trimmedPart)) {
-            formattedParts.push(trimmedPart);
-        }
-        // Handle standalone system names (case insensitive)
-        else if (/^DMR$/i.test(trimmedPart)) {
-            formattedParts.push('DMR');
-        }
-        else if (/^D-?Star$/i.test(trimmedPart)) {
-            formattedParts.push('D-Star');
-        }
-        else if (/^Mot\s+DMR$/i.test(trimmedPart)) {
-            formattedParts.push('Mot DMR');
-        }
-        else if (/^P25$/i.test(trimmedPart)) {
-            formattedParts.push('P25');
-        }
-        else if (/^Fusion$/i.test(trimmedPart)) {
-            formattedParts.push('Fusion');
-        }
-        // Skip standalone E, I, or A without numbers
-        else if (/^[EIA]$/i.test(trimmedPart)) {
-            // Don't add these
-        }
-        // For space-separated entries within a part, split and process each
-        else if (trimmedPart.includes(' ')) {
-            const subParts = trimmedPart.split(/\s+/);
-            const subFormatted = [];
-
-            for (let i = 0; i < subParts.length; i++) {
-                const subPart = subParts[i];
-
-                // Handle node formats
-                if (/^E\d+$/i.test(subPart)) {
-                    subFormatted.push(`Echo ${subPart.substring(1)}`);
-                }
-                else if (/^I\d+$/i.test(subPart)) {
-                    subFormatted.push(`IRLP ${subPart.substring(1)}`);
-                }
-                else if (/^A\d+$/i.test(subPart)) {
-                    subFormatted.push(`AllStar ${subPart.substring(1)}`);
-                }
-                // Skip standalone letters
-                else if (!/^[EIA]$/i.test(subPart) && subPart.length > 0) {
-                    subFormatted.push(subPart);
-                }
-            }
-
-            if (subFormatted.length > 0) {
-                formattedParts.push(subFormatted.join(' '));
-            }
-        }
-        // For any other single format, include as-is if it's not empty
-        else if (trimmedPart.length > 0) {
-            formattedParts.push(trimmedPart);
-        }
-    });
-
-    return formattedParts.join(', ');
-}
-
-// Message display
-function showMessage(message, type) {
-    const existingMessage = document.querySelector('.error, .success');
-    if (existingMessage) {
-        existingMessage.remove();
-    }
-
-    const messageDiv = document.createElement('div');
-    messageDiv.className = type;
-    messageDiv.textContent = message;
-
-    const container = document.querySelector('.container');
-    container.insertBefore(messageDiv, container.children[1]);
-
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
-}
-
-// Favorites management functions
-function getRepeaterId(repeater) {
-    // Create a unique ID for each repeater using call sign and frequency
-    return `${repeater.call}-${repeater.frequency}`;
-}
-
-function loadFavorites() {
-    try {
-        const savedFavorites = localStorage.getItem(FAVORITES_KEY);
-        if (savedFavorites) {
-            AppState.favorites = new Set(JSON.parse(savedFavorites));
-        }
-    } catch (error) {
-        console.error('Error loading favorites:', error);
-        AppState.favorites = new Set();
-    }
-}
-
-function saveFavorites() {
-    try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...AppState.favorites]));
-    } catch (error) {
-        console.error('Error saving favorites:', error);
-    }
-}
-
-function toggleFavorite(repeaterId, starElement) {
+export function toggleFavorite(repeaterId, starElement) {
     if (AppState.favorites.has(repeaterId)) {
         AppState.favorites.delete(repeaterId);
         starElement.classList.remove('favorited');
@@ -258,14 +133,13 @@ function toggleFavorite(repeaterId, starElement) {
     updateStats();
 }
 
-function toggleFavoriteFromPopup(repeaterId, starElement) {
+export function toggleFavoriteFromPopup(repeaterId, starElement) {
     toggleFavorite(repeaterId, starElement);
-    // Refresh the table to update the star there too
     displayRepeaters();
 }
 
 // View management
-function showTableView() {
+export function showTableView() {
     AppState.currentView = 'table';
     document.getElementById('mapContainer').style.display = 'none';
     document.getElementById('repeaterTable').parentElement.style.display = 'block';
@@ -275,9 +149,10 @@ function showTableView() {
     document.getElementById('bothViewBtn').classList.remove('active');
 
     clearRepeaterSelection();
+    pushFiltersToURL();
 }
 
-function showMapView() {
+export function showMapView() {
     AppState.currentView = 'map';
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'none';
@@ -296,9 +171,10 @@ function showMapView() {
     document.getElementById('bothViewBtn').classList.remove('active');
 
     clearRepeaterSelection();
+    pushFiltersToURL();
 }
 
-function showBothViews() {
+export function showBothViews() {
     AppState.currentView = 'both';
     document.getElementById('mapContainer').style.display = 'block';
     document.getElementById('repeaterTable').parentElement.style.display = 'block';
@@ -315,26 +191,24 @@ function showBothViews() {
     document.getElementById('tableViewBtn').classList.remove('active');
     document.getElementById('mapViewBtn').classList.remove('active');
     document.getElementById('bothViewBtn').classList.add('active');
+    pushFiltersToURL();
 }
 
 // Fullscreen functionality
-function toggleFullscreen() {
+export function toggleFullscreen() {
     const mapContainer = document.getElementById('mapContainer');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
 
     if (mapContainer.classList.contains('fullscreen')) {
-        // Exit fullscreen
         mapContainer.classList.remove('fullscreen');
         fullscreenBtn.textContent = '\u26F6';
         fullscreenBtn.title = 'Toggle Fullscreen';
     } else {
-        // Enter fullscreen
         mapContainer.classList.add('fullscreen');
         fullscreenBtn.textContent = '\u2715';
         fullscreenBtn.title = 'Exit Fullscreen';
     }
 
-    // Resize map after transition
     setTimeout(() => {
         if (AppState.map) {
             AppState.map.resize();
@@ -354,7 +228,14 @@ document.addEventListener('keydown', function(e) {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    initDarkMode();
     loadFavorites();
-    // Try to load existing data on page load
+    showWhatsNewIfNeeded();
+
+    // Apply URL-driven filter state before loading data
+    const urlView = loadFiltersFromURL();
+    if (urlView === 'map') showMapView();
+    else if (urlView === 'both') showBothViews();
+
     loadData();
 });

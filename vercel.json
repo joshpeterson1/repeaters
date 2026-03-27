@@ -4,5 +4,7 @@
       "path": "/api/cron-scrape",
       "schedule": "0 6 * * 1"
     }
-  ]
+  ],
+  "installCommand": "npm install",
+  "framework": "vite"
 }

@@ -1,11 +1,23 @@
 {
+  "packageManager": "npm@10.0.0",
   "dependencies": {
-    "@vercel/blob": "^0.15.1"
+    "@vercel/blob": "^0.15.1",
+    "mapbox-gl": "^3.20.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "@vitest/coverage-v8": "^4.1.2",
+    "eslint": "^8.57.1",
+    "happy-dom": "^20.8.9",
+    "vite": "^6.4.1",
+    "vitest": "^4.1.2"
   },
   "scripts": {
-    "lint": "eslint js/ api/"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint js/ api/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   }
 }

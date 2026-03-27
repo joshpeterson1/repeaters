@@ -1,6 +1,8 @@
 // Export functionality for various formats
+import { AppState } from './state.js';
+import { showMessage } from './utils.js';
 
-function exportKML() {
+export function exportKML() {
     if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
@@ -9,7 +11,7 @@ function exportKML() {
     const kml = generateKML(AppState.filteredRepeaters);
     const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'utah_repeaters.kml';
@@ -17,12 +19,12 @@ function exportKML() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to KML`, 'success');
-    closeExportModal();
+    document.getElementById('exportModal').style.display = 'none';
 }
 
-function exportCSV() {
+export function exportCSV() {
     if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
@@ -31,7 +33,7 @@ function exportCSV() {
     const csv = generateCSV(AppState.filteredRepeaters);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'utah_repeaters_filtered.csv';
@@ -39,12 +41,12 @@ function exportCSV() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to CSV`, 'success');
-    closeExportModal();
+    document.getElementById('exportModal').style.display = 'none';
 }
 
-function exportKX3() {
+export function exportKX3() {
     if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
@@ -53,7 +55,7 @@ function exportKX3() {
     const kx3xml = generateKX3XML(AppState.filteredRepeaters);
     const blob = new Blob([kx3xml], { type: 'application/xml;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'utah_repeaters_kx3.xml';
@@ -61,12 +63,12 @@ function exportKX3() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to KX3 format`, 'success');
-    closeExportModal();
+    document.getElementById('exportModal').style.display = 'none';
 }
 
-function exportChirp() {
+export function exportChirp() {
     if (AppState.filteredRepeaters.length === 0) {
         showMessage('No repeaters to export', 'error');
         return;
@@ -75,7 +77,7 @@ function exportChirp() {
     const chirpCsv = generateChirpCSV(AppState.filteredRepeaters);
     const blob = new Blob([chirpCsv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = 'utah_repeaters_chirp.csv';
@@ -83,36 +85,34 @@ function exportChirp() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     showMessage(`Exported ${AppState.filteredRepeaters.length} repeaters to CHIRP format`, 'success');
-    closeExportModal();
+    document.getElementById('exportModal').style.display = 'none';
 }
 
-function generateKX3XML(repeaters) {
+export function generateKX3XML(repeaters) {
     let xml = `<?xml version="1.0" standalone="yes"?>
 <K3ME xmlns="http://elecraft.com/K3MEDataSet.xsd">`;
 
     repeaters.forEach((repeater, index) => {
-        if (!repeater.frequency) return; // Skip if no frequency
-        
+        if (!repeater.frequency) return;
+
         const freq = parseFloat(repeater.frequency);
         const offset = parseOffset(repeater.offset);
         const ctcss = parseCTCSS(repeater.ctcss);
         const label = generateLabel(repeater);
         const description = `${repeater.general_location || repeater.location || ''} ${repeater.sponsor || ''}`.trim();
-        
-        // Determine mode based on frequency
+
         const mode = freq < 30 ? 'USB' : 'FM';
-        
-        // Calculate flags based on offset and CTCSS
+
         let flags4 = 0;
         if (mode === 'FM') {
             if (offset !== 0 && ctcss > 0) {
-                flags4 = offset > 0 ? 5 : 6; // +offset+tone or -offset+tone
+                flags4 = offset > 0 ? 5 : 6;
             } else if (offset !== 0) {
-                flags4 = offset > 0 ? 1 : 2; // +offset or -offset
+                flags4 = offset > 0 ? 1 : 2;
             } else if (ctcss > 0) {
-                flags4 = 4; // tone only
+                flags4 = 4;
             }
         }
 
@@ -153,26 +153,22 @@ function generateKX3XML(repeaters) {
     return xml;
 }
 
-function generateChirpCSV(repeaters) {
-    // CHIRP CSV format headers
+export function generateChirpCSV(repeaters) {
     let csv = 'Location,Name,Frequency,Duplex,Offset,Tone,rToneFreq,cToneFreq,DtcsCode,DtcsPolarity,Mode,TStep,Skip,Comment,URCALL,RPT1CALL,RPT2CALL\n';
-    
+
     repeaters.forEach((repeater, index) => {
-        if (!repeater.frequency) return; // Skip if no frequency
-        
+        if (!repeater.frequency) return;
+
         const freq = parseFloat(repeater.frequency);
         const offset = parseOffset(repeater.offset);
         const ctcss = parseCTCSS(repeater.ctcss);
-        
-        // Determine duplex setting
+
         let duplex = '';
         if (offset > 0) duplex = '+';
         else if (offset < 0) duplex = '-';
-        
-        // Format offset as absolute value in MHz
+
         const offsetMHz = Math.abs(offset);
-        
-        // Determine tone mode
+
         let tone = '';
         let rToneFreq = '';
         let cToneFreq = '';
@@ -181,129 +177,115 @@ function generateChirpCSV(repeaters) {
             rToneFreq = ctcss.toString();
             cToneFreq = ctcss.toString();
         }
-        
-        // Create name from call sign and location
+
         const name = `${repeater.call || 'RPT'} ${(repeater.general_location || repeater.location || '').substring(0, 10)}`.trim();
-        
-        // Create comment with additional info
+
         const commentParts = [];
         if (repeater.sponsor) commentParts.push(repeater.sponsor);
         if (repeater.site_name) commentParts.push(repeater.site_name);
         if (repeater.info) commentParts.push(repeater.info);
-        const comment = commentParts.join(' | ').substring(0, 50); // Limit comment length
-        
-        // Build CSV row
+        const comment = commentParts.join(' | ').substring(0, 50);
+
         const row = [
-            index + 1, // Location (memory number)
-            `"${name}"`, // Name
-            freq.toFixed(6), // Frequency
-            duplex, // Duplex
-            offsetMHz > 0 ? offsetMHz.toFixed(6) : '', // Offset
-            tone, // Tone
-            rToneFreq, // rToneFreq
-            cToneFreq, // cToneFreq
-            '', // DtcsCode
-            'NN', // DtcsPolarity
-            'FM', // Mode
-            '5.00', // TStep (5kHz for VHF/UHF)
-            '', // Skip
-            `"${comment}"`, // Comment
-            '', // URCALL
-            '', // RPT1CALL
-            '' // RPT2CALL
+            index + 1,
+            `"${name}"`,
+            freq.toFixed(6),
+            duplex,
+            offsetMHz > 0 ? offsetMHz.toFixed(6) : '',
+            tone,
+            rToneFreq,
+            cToneFreq,
+            '',
+            'NN',
+            'FM',
+            '5.00',
+            '',
+            `"${comment}"`,
+            '',
+            '',
+            ''
         ];
-        
+
         csv += row.join(',') + '\n';
     });
-    
+
     return csv;
 }
 
-function parseOffset(offsetStr) {
+export function parseOffset(offsetStr) {
     if (!offsetStr || offsetStr === 'N/A' || offsetStr === '') return 0;
-    
-    // Handle common offset formats
+
     const cleanOffset = offsetStr.replace(/[^\d\.\-\+]/g, '');
     const offset = parseFloat(cleanOffset);
-    
+
     if (isNaN(offset)) return 0;
-    
-    // Convert kHz to MHz if needed (assume values > 10 are in kHz)
+
     if (Math.abs(offset) > 10) {
         return offset / 1000;
     }
-    
+
     return offset;
 }
 
-function parseCTCSS(ctcssStr) {
+export function parseCTCSS(ctcssStr) {
     if (!ctcssStr || ctcssStr === 'N/A' || ctcssStr === '') return 0;
-    
-    // Extract numeric value from CTCSS string
+
     const match = ctcssStr.match(/(\d+\.?\d*)/);
     if (match) {
         return parseFloat(match[1]);
     }
-    
+
     return 0;
 }
 
-function generateLabel(repeater) {
-    // Create a short label for the repeater
+export function generateLabel(repeater) {
     let label = '';
-    
+
     if (repeater.call) {
-        // Use call sign, truncate if too long
         label = repeater.call.substring(0, 8);
     } else if (repeater.frequency) {
-        // Use frequency as fallback
         label = repeater.frequency.toString();
     } else {
         label = 'RPT';
     }
-    
+
     return label;
 }
 
-function generateCSV(repeaters) {
+export function generateCSV(repeaters) {
     if (repeaters.length === 0) return '';
-    
-    // Get all unique field names from all repeaters
+
     const allFields = new Set();
     repeaters.forEach(repeater => {
         Object.keys(repeater).forEach(key => {
-            // Skip internal fields we added for processing
             if (key !== 'lat' && key !== 'lon') {
                 allFields.add(key);
             }
         });
     });
-    
+
     const fieldNames = Array.from(allFields).sort();
-    
-    // Create CSV header
+
     let csv = fieldNames.map(field => `"${field}"`).join(',') + '\n';
-    
-    // Add data rows
+
     repeaters.forEach(repeater => {
         const row = fieldNames.map(field => {
             const value = repeater[field] || '';
-            // Escape quotes and wrap in quotes
             return `"${value.toString().replace(/"/g, '""')}"`;
         });
         csv += row.join(',') + '\n';
     });
-    
+
     return csv;
 }
 
-function generateKML(repeaters) {
+export function generateKML(repeaters) {
     let kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
     <name>Utah Repeaters</name>
     <description>Utah VHF Society Repeater List</description>
-    
+
     <Style id="repeaterIcon">
         <IconStyle>
             <Icon>
@@ -351,7 +333,7 @@ ${repeater.distance ? `<b>Distance:</b> ${repeater.distance} miles<br/>` : ''}
     return kml;
 }
 
-function escapeXML(str) {
+export function escapeXML(str) {
     return str.replace(/[<>&'"]/g, function (c) {
         switch (c) {
             case '<': return '&lt;';

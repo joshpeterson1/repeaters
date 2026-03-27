@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob';
+import { put, list } from '@vercel/blob';
 import { parseCSVLine } from './utils.js';
 
 export default async function handler(req, res) {
@@ -13,27 +13,76 @@ export default async function handler(req, res) {
     // Scrape the data
     const repeaters = await scrapeRawRepeaterData();
     
+    // Compare with previous data before saving
+    let previousCount = null;
+    try {
+      const { blobs } = await list({ prefix: 'utah_repeaters.csv', limit: 1 });
+      if (blobs.length > 0) {
+        const prevResponse = await fetch(blobs[0].url);
+        const prevCsv = await prevResponse.text();
+        previousCount = prevCsv.split('\n').filter(l => l.trim()).length - 1;
+      }
+    } catch (e) {
+      console.warn('Could not fetch previous data for comparison:', e.message);
+    }
+
+    const countDelta = previousCount !== null ? repeaters.length - previousCount : null;
+
+    // Log structured scrape result
+    console.log(JSON.stringify({
+      event: 'scrape_complete',
+      count: repeaters.length,
+      previous_count: previousCount,
+      delta: countDelta,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Warn if count drops by more than 20%
+    if (previousCount && countDelta < 0 && Math.abs(countDelta) > previousCount * 0.2) {
+      console.error(JSON.stringify({
+        event: 'scrape_count_drop',
+        severity: 'warning',
+        count: repeaters.length,
+        previous_count: previousCount,
+        drop_percent: Math.round(Math.abs(countDelta) / previousCount * 100)
+      }));
+    }
+
     // Convert to CSV format
     const csvData = saveToCsvV2(repeaters);
-    
+
     // Upload to Vercel Blob
     const blob = await put('utah_repeaters.csv', csvData, {
       access: 'public',
       contentType: 'text/csv',
       addRandomSuffix: false
     });
-    
+
     console.log(`Successfully scraped ${repeaters.length} repeaters and saved to blob`);
-    
+
     return res.status(200).json({
       success: true,
       count: repeaters.length,
+      previous_count: previousCount,
+      delta: countDelta,
       blobUrl: blob.url,
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
     console.error('Cron scrape failed:', error);
+
+    // Fire-and-forget webhook notification on failure
+    const webhookUrl = process.env.HEALTH_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          body: `Utah Repeater scrape failed: ${error.message}`
+        });
+      } catch { /* don't let notification failure mask the real error */ }
+    }
+
     return res.status(500).json({
       error: 'Scraping failed',
       message: error.message

@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Utah Repeater Viewer</title>
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <link href='css/styles.css' rel='stylesheet' />
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <div class="container">
         <div class="header-container">
             <h1>Utah Repeater Viewer</h1>
-            <button class="settings-btn">Help</button>
+            <div class="header-actions">
+                <button id="darkModeToggle" class="dark-mode-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">&#9790;</button>
+                <button class="settings-btn">Help</button>
+            </div>
         </div>
 
         <div class="last-updated" id="lastUpdated"></div>
 
         <!-- Help Modal -->
-        <div id="helpModal" class="modal">
+        <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Help</h3>
-                    <span class="close">&times;</span>
+                    <h3 id="helpModalTitle">Help</h3>
+                    <button class="close" aria-label="Close">&times;</button>
                 </div>
 
                 <div class="modal-section">
@@ -60,11 +62,11 @@
         </div>
 
         <!-- Stats for Nerds Modal -->
-        <div id="statsModal" class="modal">
+        <div id="statsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="statsModalTitle">
             <div class="modal-content stats-modal-content">
                 <div class="modal-header">
-                    <h3>Stats for nerds</h3>
-                    <span class="close">&times;</span>
+                    <h3 id="statsModalTitle">Stats for nerds</h3>
+                    <button class="close" aria-label="Close">&times;</button>
                 </div>
 
                 <div id="statsContent" class="stats-content">
@@ -74,11 +76,11 @@
         </div>
 
         <!-- Export Modal -->
-        <div id="exportModal" class="modal">
+        <div id="exportModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Export Repeater Data</h3>
-                    <span class="close">&times;</span>
+                    <h3 id="exportModalTitle">Export Repeater Data</h3>
+                    <button class="close" aria-label="Close">&times;</button>
                 </div>
 
                 <div class="modal-section">
@@ -109,7 +111,10 @@
         <div class="controls">
             <div class="control-group">
                 <label for="zipCode">ZIP Code:</label>
-                <input type="text" id="zipCode" placeholder="84101" />
+                <div class="zip-group">
+                    <input type="text" id="zipCode" placeholder="84101" />
+                    <button type="button" id="useMyLocationBtn" class="geolocation-btn" title="Use my current location">My Location</button>
+                </div>
             </div>
             <div class="control-group">
                 <label for="distance">Max Distance (miles):</label>
@@ -167,7 +172,7 @@
             <button class="export-btn" data-action="open-export">Export</button>
         </div>
 
-        <div class="stats" id="stats">No data loaded</div>
+        <div class="stats" id="stats" aria-live="polite" aria-atomic="true">No data loaded</div>
 
         <div class="view-toggle">
             <strong>View:</strong>
@@ -187,38 +192,39 @@
             </div>
         </div>
 
-        <div class="table-container">
+        <div class="table-container" id="main-content">
             <table id="repeaterTable">
                 <thead>
                     <tr>
-                        <th style="width: 40px;">&#9733;</th>
-                        <th data-sort="frequency">Frequency</th>
-                        <th data-sort="call">Call</th>
-                        <th data-sort="general_location">Location</th>
-                        <th data-sort="site_name">Site</th>
-                        <th data-sort="sponsor">Sponsor</th>
-                        <th data-sort="ctcss">CTCSS</th>
-                        <th data-sort="offset">Offset</th>
-                        <th data-sort="elevation">Elevation</th>
-                        <th data-sort="distance">Distance</th>
-                        <th data-sort="internet_link">Internet</th>
-                        <th data-sort="info">Info</th>
+                        <th style="width: 40px;" aria-label="Favorites">&#9733;</th>
+                        <th data-sort="frequency" tabindex="0" aria-sort="none">Frequency</th>
+                        <th data-sort="call" tabindex="0" aria-sort="none">Call</th>
+                        <th data-sort="general_location" tabindex="0" aria-sort="none">Location</th>
+                        <th data-sort="site_name" tabindex="0" aria-sort="none">Site</th>
+                        <th data-sort="sponsor" tabindex="0" aria-sort="none">Sponsor</th>
+                        <th data-sort="ctcss" tabindex="0" aria-sort="none">CTCSS</th>
+                        <th data-sort="offset" tabindex="0" aria-sort="none">Offset</th>
+                        <th data-sort="elevation" tabindex="0" aria-sort="none">Elevation</th>
+                        <th data-sort="distance" tabindex="0" aria-sort="none">Distance</th>
+                        <th data-sort="internet_link" tabindex="0" aria-sort="none">Internet</th>
+                        <th data-sort="info" tabindex="0" aria-sort="none">Info</th>
                     </tr>
                 </thead>
                 <tbody id="repeaterTableBody">
                 </tbody>
             </table>
         </div>
+
+        <aside id="detailPanel" class="detail-panel" role="complementary" aria-label="Repeater details">
+            <div class="detail-panel-header">
+                <h3 id="detailPanelTitle">Repeater Details</h3>
+                <button class="detail-panel-close" aria-label="Close details">&times;</button>
+            </div>
+            <div id="detailPanelContent" class="detail-panel-content"></div>
+        </aside>
     </div>
 
-    <script src='js/constants.js'></script>
-    <script src='js/state.js'></script>
-    <script src='js/main.js'></script>
-    <script src='js/map.js'></script>
-    <script src='js/filters.js'></script>
-    <script src='js/export.js'></script>
-    <script src='js/data.js'></script>
-    <script src='js/ui.js'></script>
+    <script type="module" src="/js/app.js"></script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

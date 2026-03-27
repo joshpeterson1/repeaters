@@ -1,5 +1,5 @@
 // Centralized application state
-const AppState = {
+export const AppState = {
     allRepeaters: [],
     filteredRepeaters: [],
     currentSort: { column: null, direction: 'asc' },
@@ -16,4 +16,5 @@ const AppState = {
     drawOtherLinks: false,
     drawNonValidatedLinks: false,
     nonValidatedLinks: [],
+    detailRepeater: null,
 };
