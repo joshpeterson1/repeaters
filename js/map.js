@@ -1,12 +1,18 @@
 // Map-related functionality
 import mapboxgl from 'mapbox-gl';
-import { MAP_CENTER, MAP_DEFAULT_ZOOM, SYSTEM_TYPES, LINK_COLORS, MAP_STYLE_LIGHT } from './constants.js';
+import { MAP_CENTER, MAP_DEFAULT_ZOOM, SYSTEM_TYPES, LINK_COLORS, SYSTEM_LINK_COLORS, MAP_STYLE_LIGHT } from './constants.js';
 import { AppState } from './state.js';
 import { getBand, getRepeaterId, escapeHTML } from './utils.js';
 import { openDetailPanel } from './detail-panel.js';
 
 // Public Mapbox client token — scoped by domain restrictions in the Mapbox dashboard.
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic29tYmVyanAiLCJhIjoiY21majlxOG5oMDJoejJscHdwMXQwbzF5OCJ9.d4gGG0AbXkQff-UZsdkuow';
+
+// Read a CSS custom property from :root so map paint colors follow the active theme.
+function token(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+}
 
 export function initializeMap() {
     if (AppState.mapReady) return AppState.mapReady;
@@ -56,12 +62,12 @@ export function setupMapLayers() {
 
     AppState.map.addLayer({
         id: 'utah-boundary-fill', type: 'fill', source: 'utah-boundary',
-        paint: { 'fill-color': '#007bff', 'fill-opacity': 0.05 }
+        paint: { 'fill-color': token('--map-boundary-fill', '#0969da'), 'fill-opacity': 0.05 }
     });
 
     AppState.map.addLayer({
         id: 'utah-boundary-line', type: 'line', source: 'utah-boundary',
-        paint: { 'line-color': '#dc3545', 'line-width': 2, 'line-opacity': 0.6, 'line-dasharray': [2, 2] }
+        paint: { 'line-color': token('--map-boundary-line', '#cf222e'), 'line-width': 2, 'line-opacity': 0.6, 'line-dasharray': [2, 2] }
     });
 
     AppState.map.addSource('repeaters', {
@@ -74,25 +80,40 @@ export function setupMapLayers() {
         id: 'clusters', type: 'circle', source: 'repeaters',
         filter: ['has', 'point_count'],
         paint: {
-            'circle-color': ['step', ['get', 'point_count'], '#51bbd6', 10, '#f1f075', 30, '#f28cb1'],
-            'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 30, 40]
+            'circle-color': ['step', ['get', 'point_count'],
+                token('--map-cluster-low', '#56B4E9'), 10,
+                token('--map-cluster-med', '#E69F00'), 30,
+                token('--map-cluster-high', '#CC3311')],
+            'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 30, 40],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': token('--map-marker-stroke', '#ffffff')
         }
     });
 
     AppState.map.addLayer({
         id: 'cluster-count', type: 'symbol', source: 'repeaters',
         filter: ['has', 'point_count'],
-        layout: { 'text-field': '{point_count_abbreviated}', 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'], 'text-size': 12 }
+        layout: { 'text-field': '{point_count_abbreviated}', 'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'], 'text-size': 13 },
+        paint: { 'text-color': token('--map-cluster-text', '#0d1117') }
     });
 
     AppState.map.addLayer({
         id: 'unclustered-point', type: 'circle', source: 'repeaters',
         filter: ['!', ['has', 'point_count']],
         paint: {
-            'circle-color': ['case', ['==', ['get', 'band'], '2m'], '#dc3545', ['==', ['get', 'band'], '70cm'], '#007bff', ['==', ['get', 'band'], '6m'], '#28a745', ['==', ['get', 'band'], '1.25m'], '#ffc107', '#6c757d'],
+            'circle-color': ['case',
+                ['==', ['get', 'band'], '2m'], token('--map-marker-2m', '#E69F00'),
+                ['==', ['get', 'band'], '70cm'], token('--map-marker-70cm', '#0072B2'),
+                ['==', ['get', 'band'], '6m'], token('--map-marker-6m', '#009E73'),
+                ['==', ['get', 'band'], '1.25m'], token('--map-marker-125m', '#CC79A7'),
+                ['==', ['get', 'band'], '33cm'], token('--map-marker-33cm', '#F0E442'),
+                ['==', ['get', 'band'], '23cm'], token('--map-marker-23cm', '#882255'),
+                token('--map-marker-other', '#56B4E9')],
             'circle-radius': ['case', ['>', ['get', 'count'], 1], 10, 8],
             'circle-stroke-width': ['case', ['>', ['get', 'count'], 1], 3, 2],
-            'circle-stroke-color': ['case', ['>', ['get', 'count'], 1], '#ff6b35', '#fff']
+            'circle-stroke-color': ['case',
+                ['>', ['get', 'count'], 1], token('--map-marker-stroke-multi', '#0d1117'),
+                token('--map-marker-stroke', '#ffffff')]
         }
     });
 
@@ -102,7 +123,13 @@ export function setupMapLayers() {
 
     AppState.map.addLayer({
         id: 'highlighted-point', type: 'circle', source: 'highlighted-repeater',
-        paint: { 'circle-color': '#ff0000', 'circle-radius': 15, 'circle-stroke-width': 4, 'circle-stroke-color': '#ffffff', 'circle-opacity': 0.8 }
+        paint: {
+            'circle-color': token('--map-highlight', '#cf222e'),
+            'circle-radius': 15,
+            'circle-stroke-width': 4,
+            'circle-stroke-color': token('--map-highlight-stroke', '#ffffff'),
+            'circle-opacity': 0.85
+        }
     });
 
     AppState.map.addSource('repeater-links', {
@@ -255,7 +282,12 @@ export function centerMapOnUser() {
 
     if (!AppState.map.getSource('user-location')) {
         AppState.map.addSource('user-location', { type: 'geojson', data: { type: 'Point', coordinates: [AppState.userLocation.lon, AppState.userLocation.lat] } });
-        AppState.map.addLayer({ id: 'user-location', type: 'circle', source: 'user-location', paint: { 'circle-radius': 10, 'circle-color': '#ff0000', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } });
+        AppState.map.addLayer({ id: 'user-location', type: 'circle', source: 'user-location', paint: {
+            'circle-radius': 10,
+            'circle-color': token('--map-user-location', '#1a7f37'),
+            'circle-stroke-width': 3,
+            'circle-stroke-color': token('--map-user-location-stroke', '#ffffff')
+        } });
     }
 }
 
@@ -278,13 +310,22 @@ export function clearRepeaterSelection() {
 }
 
 export function getLinkColor(link, linkColorMap, colorIndex) {
-    if (link.type === 'intertie') return { color: '#FF0000', colorIndex };
+    if (link.type === 'intertie') return { color: SYSTEM_LINK_COLORS.intertie, colorIndex };
     if (link.type === 'system') {
-        const systemColors = { [SYSTEM_TYPES.CACTUS]: '#00FF00', [SYSTEM_TYPES.BARC]: '#0000FF', [SYSTEM_TYPES.SDARC]: '#FF00FF' };
-        return { color: systemColors[link.systemType] || '#FFA500', colorIndex };
+        const systemColors = {
+            [SYSTEM_TYPES.CACTUS]: SYSTEM_LINK_COLORS.cactus,
+            [SYSTEM_TYPES.BARC]: SYSTEM_LINK_COLORS.barc,
+            [SYSTEM_TYPES.SDARC]: SYSTEM_LINK_COLORS.sdarc,
+        };
+        return { color: systemColors[link.systemType] || SYSTEM_LINK_COLORS.other, colorIndex };
     }
     const linkKey = [link.from.call, link.to.call].sort().join('-');
-    if (!linkColorMap.has(linkKey)) { linkColorMap.set(linkKey, LINK_COLORS[colorIndex % LINK_COLORS.length]); colorIndex++; }
+    // skip index 0 (reserved for intertie) for per-link auto coloring
+    if (!linkColorMap.has(linkKey)) {
+        const palette = LINK_COLORS.slice(1);
+        linkColorMap.set(linkKey, palette[colorIndex % palette.length]);
+        colorIndex++;
+    }
     return { color: linkColorMap.get(linkKey), colorIndex };
 }
 

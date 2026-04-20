@@ -25,40 +25,52 @@ export const MAP_STYLE_LIGHT = 'mapbox://styles/mapbox/outdoors-v12';
 export const MAP_STYLE_DARK = 'mapbox://styles/mapbox/dark-v11';
 
 // Update this when releasing noteworthy changes — drives the "What's New" popup
-export const APP_VERSION = '2026-03-27';
+export const APP_VERSION = '2026-04-20';
 export const WHATS_NEW = {
-    date: 'March 27, 2026',
+    date: 'April 20, 2026',
     items: [
-        { emoji: '\uD83D\uDCCB', text: 'Repeater detail panel — click any repeater to see all 40+ fields in a slide-out panel' },
-        { emoji: '\uD83C\uDF19', text: 'Dark mode — toggle in the header, respects your system preference' },
-        { emoji: '\uD83D\uDD17', text: 'Shareable links — filters, view mode, and selected repeater are saved in the URL' },
-        { emoji: '\uD83D\uDCCD', text: '"My Location" button — use GPS instead of typing a ZIP code' },
-        { emoji: '\u2328\uFE0F', text: 'Accessibility — keyboard navigation, screen reader support, focus management' },
+        { emoji: '\uD83C\uDFA8', text: 'Accessibility-first color palette — all text now meets WCAG AA contrast in both light and dark modes' },
+        { emoji: '\uD83D\uDC41\uFE0F', text: 'Color-blind-safe map markers and link lines — bands are distinguishable for deuteranopia, protanopia, and tritanopia' },
+        { emoji: '\uD83D\uDCF1', text: 'Mobile filter checkboxes redesigned as full-width tap cards with 44px touch targets' },
+        { emoji: '\u2728', text: 'Reduced-motion and high-contrast media queries respected system-wide' },
+        { emoji: '\uD83D\uDCAC', text: 'Map popup and selected rows now readable in dark mode with proper theming' },
     ]
 };
 
+// Color-blind-safe palette for link lines. Blends Okabe-Ito and Tol Bright;
+// each hue is distinguishable under deuteranopia, protanopia, and tritanopia.
+// First entry is reserved for the "intertie" link type.
 export const LINK_COLORS = [
-    '#FF0000', // Red (reserved for intertie)
-    '#00AA00', // Dark Green
-    '#0066FF', // Bright Blue
-    '#FF6600', // Orange
-    '#AA00AA', // Purple/Magenta
-    '#00AAAA', // Teal/Cyan
-    '#FFAA00', // Amber
-    '#AA0000', // Dark Red
-    '#0000AA', // Dark Blue
-    '#AA6600', // Brown/Orange
-    '#6600AA', // Dark Purple
-    '#00AA66', // Teal Green
-    '#FF0066', // Pink/Red
-    '#66AA00', // Olive Green
-    '#0066AA', // Steel Blue
-    '#AA6600', // Dark Orange
-    '#6600FF', // Blue Purple
-    '#FF6600', // Red Orange
-    '#00FF66', // Spring Green
-    '#6666AA', // Slate Blue
+    '#CC3311', // Vermillion (reserved for intertie)
+    '#0072B2', // Blue
+    '#009E73', // Bluish green
+    '#E69F00', // Orange
+    '#CC79A7', // Reddish purple
+    '#56B4E9', // Sky blue
+    '#D55E00', // Red-orange
+    '#F0E442', // Yellow
+    '#882255', // Wine
+    '#117733', // Forest
+    '#44AA99', // Teal
+    '#AA3377', // Purple
+    '#332288', // Indigo
+    '#DDCC77', // Sand
+    '#88CCEE', // Light cyan
+    '#999933', // Olive
+    '#661100', // Maroon
+    '#6699CC', // Steel blue
+    '#AA4499', // Mauve
+    '#DDDDDD', // Pale grey (fallback)
 ];
+
+// Colors for well-known link systems. CVD-safe and distinct from the main band palette.
+export const SYSTEM_LINK_COLORS = {
+    intertie: '#CC3311',
+    cactus: '#117733',
+    barc: '#332288',
+    sdarc: '#AA3377',
+    other: '#E69F00',
+};
 
 // Frequency ranges for link validation (superset of BANDS, includes 10m)
 export const LINK_FREQ_RANGES = [

@@ -7,7 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Accessibility-first color palette overhaul — all tokens now meet WCAG 2.1 AA (4.5:1 text, 3:1 UI) across light and dark modes, based on GitHub Primer / Radix / Carbon systems
+- Color-blind-safe band markers on the map using the Okabe-Ito palette (2m, 70cm, 6m, 1.25m, 33cm, 23cm, other) so deuteranopia/protanopia/tritanopia users can still distinguish bands
+- Color-blind-safe link line palette (Okabe-Ito + Tol Bright blend, 20 hues) replacing the previous primary-color set; new `SYSTEM_LINK_COLORS` constant for intertie/CACTUS/BARC/SDARC
+- New CSS map tokens (`--map-marker-*`, `--map-cluster-*`, `--map-highlight`, `--map-boundary-*`) consumed by `js/map.js` so map paint colors follow the active theme automatically
+- `prefers-reduced-motion` media query — disables fade/slide/spin animations for users with vestibular sensitivities
+- `prefers-contrast: more` media query — strengthens borders, text, and focus rings in high-contrast mode
+- Stronger focus rings with 4px outer glow for improved keyboard navigation visibility; focus-visible extended to close buttons, detail panel close, dark-mode toggle, and fullscreen button
+- Selected table row now has a 3px left-edge accent so the selection is distinguishable for color-blind users
+- `aria-live="polite"` on the detail panel content region so screen readers announce updates when a new repeater is opened
 - Dark mode with toggle button, localStorage persistence, and `prefers-color-scheme` detection; Mapbox map switches between outdoor and dark styles
+
+### Fixed
+- Mobile filter checkbox layout — checkboxes were floating mid-column with labels crammed right. Each checkbox row is now a full-width tap card (44px min touch target, checkbox flush-left, label flush-next-to-it, explicit surface/border) matching the card design of other controls.
+- Dark mode map popup was unreadable — Mapbox default popup kept a white background while our dark-mode text tokens rendered on it, turning labels into near-invisible light gray. Popup surface, tip, close button, and inner text now follow theme tokens.
+
+### Changed
+- Mobile: ZIP / callsign inputs, distance select, and action buttons now enforce 44px minimum height and 16px font-size (prevents iOS zoom-on-focus); band multiselect keeps a visible scrollable area instead of collapsing
+- Cluster colors moved off pink/yellow (`#f1f075` / `#f28cb1`) to Okabe-Ito orange/vermillion for better contrast over OSM tiles
+- Selection marker moved from pure `#ff0000` to `#cf222e` (light) / `#f85149` (dark) to reduce halation
+- Muted text darkened from `#666` → `#525252` (light) and `#9e9e9e` → `#c6c6c6` (dark) to pass AA
+- Dark-mode borders lifted from `#3a3a5c` to `#4c5155` (plus `--color-border-strong` for form controls)
+- Disabled buttons now use a dedicated `--color-disabled-bg` / `--color-disabled-text` pair instead of opacity, guaranteeing 3:1
+- Link line palette regenerated to be CVD-safe (see "Added")
 - URL-based filter state — filters, view mode, and search params encode into shareable URLs via `history.replaceState`
 - Geolocation API "My Location" button as alternative to ZIP code entry for distance filtering
 - Repeater detail panel — slide-out panel showing all 40+ fields when a repeater is clicked (table row or map marker), with deep-linkable URLs via `?detail=CALL-FREQ`
