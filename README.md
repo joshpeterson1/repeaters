@@ -1,8 +1,8 @@
 # Utah Repeater Viewer
 
 A web application for viewing and filtering amateur radio repeaters in Utah, with interactive mapping and export capabilities.  
-[Production URL](https://repeaters.somber.dev)
-Redirect: somber.dev/repeaters
+[Production URL](https://repeaters.somber.dev)  
+Redirect: somber.dev/repeaters  
 
 ## File Structure
 
